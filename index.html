@@ -1,0 +1,2743 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ALES CRM — Hệ thống Anh ngữ ALES</title>
+<style>
+:root{
+  color-scheme: light;
+  --surface-1:#fcfcfb; --plane:#f4f4f1; --panel:#ffffff;
+  --text-primary:#0b0b0b; --text-secondary:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,0.10);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+  --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b; --good-ink:#006300;
+  --b100:#cde2fb; --b250:#86b6ef; --b350:#5598e7; --b450:#2a78d6; --b550:#1c5cab; --b650:#104281;
+  --brand:#c8102e;
+  --radius:10px; --shadow:0 1px 2px rgba(11,11,11,.06), 0 8px 24px rgba(11,11,11,.06);
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --surface-1:#1a1a19; --plane:#0d0d0d; --panel:#1f1f1e;
+  --text-primary:#ffffff; --text-secondary:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --good-ink:#0ca30c;
+  --b100:#0d366b; --b250:#184f95; --b350:#256abf; --b450:#3987e5; --b550:#6da7ec; --b650:#9ec5f4;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--plane);color:var(--text-primary);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--axis);border-radius:6px}
+
+.app{display:grid;grid-template-columns:238px 1fr;min-height:100vh}
+.side{background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:10px;padding:14px 14px 10px}
+.logo{width:36px;height:36px;border-radius:9px;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:800;font-size:12px;letter-spacing:.5px}
+.brand b{font-size:15px;display:block;line-height:1.1}
+.brand span{font-size:11px;color:var(--muted)}
+.nav{padding:6px;display:flex;flex-direction:column;gap:1px;overflow:auto}
+.nav .grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:12px 10px 4px}
+.nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--text-secondary);font-weight:500;font-size:13.5px}
+.nav button:hover{background:var(--plane)}
+.nav button.on{background:color-mix(in srgb,var(--s1) 12%,transparent);color:var(--s1);font-weight:650}
+.nav .ico{width:18px;text-align:center;flex:none;opacity:.85}
+.nav .cnt{margin-left:auto;font-size:11px;background:var(--critical);color:#fff;border-radius:20px;padding:0 6px;font-weight:700}
+.nav .cnt.warn{background:var(--warning);color:#3a2c00}
+.side-foot{margin-top:auto;padding:10px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)}
+
+.main{display:flex;flex-direction:column;min-width:0}
+.top{position:sticky;top:0;z-index:30;background:var(--surface-1);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:9px 18px}
+.top h1{font-size:16px;margin:0;font-weight:650;white-space:nowrap}
+.search{flex:1;max-width:400px;position:relative}
+.search input{width:100%;padding:8px 10px 8px 32px;border:1px solid var(--border);border-radius:8px;background:var(--plane)}
+.search svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);opacity:.5}
+.who{display:flex;align-items:center;gap:8px;margin-left:auto}
+.content{padding:16px 18px 40px;display:flex;flex-direction:column;gap:14px}
+
+.card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.card-h{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border)}
+.card-h h3{margin:0;font-size:13.5px;font-weight:650}
+.card-h .sub,.sub{font-size:11.5px;color:var(--muted)}
+.card-b{padding:14px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grow{flex:1}
+select,input[type=text],input[type=date],input[type=time],input[type=number],textarea{padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface-1)}
+select:focus,input:focus,textarea:focus{outline:2px solid color-mix(in srgb,var(--s1) 45%,transparent);outline-offset:1px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-1);cursor:pointer;font-weight:550}
+.btn:hover{background:var(--plane)}
+.btn.pri{background:var(--s1);border-color:var(--s1);color:#fff}
+.btn.pri:hover{filter:brightness(1.06)}
+.btn.ok{background:var(--good);border-color:var(--good);color:#fff}
+.btn.sm{padding:4px 9px;font-size:12.5px}
+.btn.dg{color:var(--critical);border-color:color-mix(in srgb,var(--critical) 40%,var(--border))}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:20px;font-size:11.5px;font-weight:600;border:1px solid var(--border);white-space:nowrap}
+.chip.dg{color:var(--critical);border-color:color-mix(in srgb,var(--critical) 45%,var(--border))}
+.chip.ok{color:var(--good-ink);border-color:color-mix(in srgb,var(--good) 45%,var(--border))}
+.chip.wn{color:#7a5600;background:color-mix(in srgb,var(--warning) 22%,transparent);border-color:color-mix(in srgb,var(--warning) 45%,var(--border))}
+.dot{width:7px;height:7px;border-radius:50%;flex:none}
+.muted{color:var(--muted)} .tnum{font-variant-numeric:tabular-nums}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:12px}
+.tile{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow)}
+.tile .lab{font-size:11px;color:var(--muted);font-weight:650;text-transform:uppercase;letter-spacing:.4px}
+.tile .val{font-size:25px;font-weight:700;margin-top:3px;letter-spacing:-.5px}
+.tile .sub{font-size:11.5px;color:var(--text-secondary);margin-top:2px}
+.up{color:var(--good-ink);font-weight:650}.down{color:var(--critical);font-weight:650}
+
+.tbl-wrap{overflow:auto}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+th{position:sticky;top:0;background:var(--surface-1);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;padding:9px 10px;border-bottom:1px solid var(--border);z-index:2;white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--grid);vertical-align:middle}
+tbody tr:hover{background:var(--plane);cursor:pointer}
+tbody tr.sel{background:color-mix(in srgb,var(--s1) 8%,transparent)}
+.name-cell{font-weight:600}
+.sub-cell{font-size:11.5px;color:var(--muted)}
+table td .name-cell,table td .sub-cell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}
+table td .row{flex-wrap:nowrap;white-space:nowrap}
+.avatar{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;flex:none}
+
+.board{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;align-items:flex-start}
+.col{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);width:236px;flex:none;display:flex;flex-direction:column;max-height:calc(100vh - 220px)}
+.col-h{padding:9px 11px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--panel);border-radius:var(--radius) var(--radius) 0 0}
+.col-h .t{display:flex;align-items:center;gap:7px;font-weight:650;font-size:12.5px}
+.col-b{padding:7px;display:flex;flex-direction:column;gap:7px;overflow-y:auto;min-height:70px}
+.col.over .col-b{background:color-mix(in srgb,var(--s1) 7%,transparent)}
+.kcard{background:var(--surface-1);border:1px solid var(--border);border-radius:9px;padding:8px 9px;cursor:grab;box-shadow:0 1px 2px rgba(11,11,11,.05)}
+.kcard.drag{opacity:.4}
+.kcard .kn{font-weight:650;font-size:12.5px}
+.kcard .kr{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:11px;color:var(--muted)}
+
+.scrim{position:fixed;inset:0;background:rgba(11,11,11,.35);z-index:50;opacity:0;pointer-events:none;transition:opacity .18s}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:min(680px,100%);background:var(--surface-1);border-left:1px solid var(--border);z-index:51;transform:translateX(100%);transition:transform .22s ease;display:flex;flex-direction:column}
+.drawer.on{transform:none}
+.dr-h{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:flex-start}
+.dr-b{padding:14px 16px 40px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:6px 10px;font-size:13px}
+.kv .k{color:var(--muted)}
+.tl-i{display:grid;grid-template-columns:24px 1fr;gap:10px;padding-bottom:13px;position:relative}
+.tl-i:not(:last-child)::before{content:"";position:absolute;left:11px;top:24px;bottom:0;width:1px;background:var(--grid)}
+.tl-ic{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:11px;background:var(--plane);border:1px solid var(--border)}
+.tl-m{font-size:11.5px;color:var(--muted)}
+
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--grid);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.cal .hd{background:var(--panel);padding:6px;text-align:center;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.cal .cell{background:var(--surface-1);min-height:92px;padding:5px;display:flex;flex-direction:column;gap:3px}
+.cal .cell.off{background:var(--plane);opacity:.55}
+.cal .cell.today .dnum{background:var(--s1);color:#fff;border-radius:50%;width:20px;height:20px;display:grid;place-items:center}
+.dnum{font-size:11.5px;font-weight:650;color:var(--text-secondary)}
+.ev{font-size:10.5px;padding:2px 5px;border-radius:5px;background:color-mix(in srgb,var(--s1) 13%,transparent);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev.done{background:color-mix(in srgb,var(--good) 16%,transparent)}
+.ev.late{background:color-mix(in srgb,var(--critical) 16%,transparent)}
+.ev.absent{background:color-mix(in srgb,var(--warning) 22%,transparent)}
+
+.bar-row{display:grid;grid-template-columns:minmax(120px,190px) 1fr 70px;gap:10px;align-items:center;padding:3px 0;font-size:12.5px}
+.bar-track{background:var(--grid);border-radius:4px;height:16px;position:relative;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .4s}
+.cc-plot{display:flex;align-items:flex-end;gap:8px;height:160px;border-bottom:1px solid var(--axis);
+  background:linear-gradient(var(--grid),var(--grid)) 0 0/100% 1px no-repeat,linear-gradient(var(--grid),var(--grid)) 0 50%/100% 1px no-repeat}
+.cc-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:4px}
+.cc-bar{width:66%;max-width:54px;min-height:2px;border-radius:4px 4px 0 0;background:var(--b450);transition:height .35s}
+.cc-lab{font-size:11px;font-weight:650;color:var(--text-secondary);white-space:nowrap}
+.cc-x{display:flex;gap:8px;padding-top:6px}
+.cc-x span{flex:1;text-align:center;font-size:11px;color:var(--muted)}
+.tooltip{position:fixed;z-index:80;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;box-shadow:var(--shadow);pointer-events:none;opacity:0;transition:opacity .12s;max-width:280px}
+.tooltip.on{opacity:1}
+
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text-primary);color:var(--plane);padding:9px 16px;border-radius:20px;z-index:90;opacity:0;transition:.2s;font-weight:550;font-size:13px}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.empty{padding:34px;text-align:center;color:var(--muted)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:12px;overflow-x:auto}
+.tabs button{background:none;border:0;padding:8px 10px;cursor:pointer;color:var(--muted);font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;font-size:13px}
+.tabs button.on{color:var(--s1);border-bottom-color:var(--s1)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+@media(max-width:1100px){.grid2,.grid3{grid-template-columns:1fr}}
+@media(max-width:820px){.app{grid-template-columns:1fr}.side{position:static;height:auto}.nav{flex-direction:row;flex-wrap:wrap}.nav .grp{display:none}}
+.pager{display:flex;gap:6px;align-items:center;justify-content:flex-end;padding:9px 14px;border-top:1px solid var(--border);font-size:12.5px}
+.warnbar{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:9px;background:color-mix(in srgb,var(--warning) 16%,transparent);border:1px solid color-mix(in srgb,var(--warning) 45%,var(--border));font-size:13px}
+.warnbar.info{background:color-mix(in srgb,var(--s1) 10%,transparent);border-color:color-mix(in srgb,var(--s1) 35%,var(--border))}
+.warnbar.dg{background:color-mix(in srgb,var(--critical) 12%,transparent);border-color:color-mix(in srgb,var(--critical) 40%,var(--border))}
+.count72{font-variant-numeric:tabular-nums;font-weight:700}
+.rub-row{display:grid;grid-template-columns:1fr 150px;gap:10px;align-items:start;padding:9px 0;border-bottom:1px solid var(--grid)}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.seg button{background:var(--surface-1);border:0;padding:5px 11px;cursor:pointer;font-weight:650;font-size:12.5px;border-right:1px solid var(--border)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--s1);color:#fff}
+.note-box{background:var(--plane);border-radius:8px;padding:8px 10px;font-size:12.5px;color:var(--text-secondary);margin-top:6px}
+.ai-box{border:1px solid color-mix(in srgb,var(--s5) 40%,var(--border));background:color-mix(in srgb,var(--s5) 8%,transparent);border-radius:10px;padding:12px 14px}
+.ai-box h4{margin:0 0 8px;font-size:13px;display:flex;align-items:center;gap:6px}
+.prog{height:8px;background:var(--grid);border-radius:5px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--s1)}
+@media print{.side,.top,.tabs,.btn{display:none!important}.app{display:block}.content{padding:0}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <div class="logo">ALES</div>
+      <div><b>ALES CRM</b><span>Hệ thống Anh ngữ ALES</span></div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">Bản dựng thử · dữ liệu mẫu<br>Lưu trên trình duyệt của bạn</div>
+  </aside>
+  <div class="main">
+    <header class="top">
+      <h1 id="page-title">Tổng quan</h1>
+      <div class="search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" type="text" placeholder="Tìm học viên, phụ huynh, SĐT, mã KH…">
+      </div>
+      <div class="who">
+        <select id="userSel" title="Đăng nhập dưới vai trò"></select>
+        <button class="btn sm" id="themeBtn" title="Sáng / tối">◐</button>
+      </div>
+    </header>
+    <main class="content" id="view"></main>
+  </div>
+</div>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer"></aside>
+<div class="tooltip" id="tip"></div>
+<div class="toast" id="toast"></div>
+<script>
+/* Bộ tiêu chí chấm test — trích thẳng từ 4 file mẫu của ALES */
+const RUBRIC={"IELTS": {"groups": [{"group": "Fluency and Coherence/ Phản xạ và độ lưu loát", "criteria": [{"name": "Avoid silence or hesitation? Tránh được sự im lặng và do dự khi nói", "levels": {"1": "Học viên chưa tự tin, chưa chủ động tương tác với giáo viên.", "2": "Học viên khá tự tin, đôi chỗ còn e dè nhưng có chủ động tương tác khi được cô hướng dẫn, tuy nhiên còn gián đoạn nhiều", "3": "Học viên tự tin, làm chủ được phần giao tiếp với giáo viên nhưng câu trả lời còn ngắn và còn gián đoạn 1 số chỗ", "4": "Học viên rất tự tin, làm chủ phần giao tiếp với câu trả lời dài, trôi chảy và gần như không có sự gián đoạn"}}, {"name": "Use English only / Chỉ sử dụng tiếng Anh.", "levels": {"1": "Học viên có sử dụng tiếng Anh nhưng đa số vẫn cần cô giải thích thêm bằng tiếng Việt.", "2": "Học viên sử dụng tiếng Anh khá thường xuyên, cần giáo viên dịch sang tiếng Việt ở những câu khó.", "3": "Học viên sử dụng tiếng Anh thường xuyên, rất ít khi phải dịch sang tiếng Việt để hiểu.", "4": "Học viên sử dụng tiếng Anh linh hoạt, hiểu hết các câu và không cần dịch."}}, {"name": "Use correct words to express ideas? / Sử dụng từ hợp ngữ cảnh để diễn đạt ý", "levels": {"1": "Học viên hiểu và sử dụng từ vựng cơ bản nhưng còn ở mức độ yếu.", "2": "Học viên hiểu và biết sử dụng từ vựng cơ bản để trả lời.", "3": "Học viên hiểu và sử dụng từ vựng cơ bản khá linh hoạt, phù hợp ngữ cảnh để trả lời.", "4": "Học viên hiểu và sử dụng được từ vựng nâng cao, phù hợp ngữ cảnh để trả lời."}}]}, {"group": "Lexical Resources/ Từ vựng", "criteria": [{"name": "Use a wide range of vocabulary? / Sử dụng vốn từ vựng đa dạng", "levels": {"1": "Học viên có vốn từ vựng còn rất ít.", "2": "Học viên có vốn từ vựng hằng ngày ở mức cơ bản.", "3": "Học viên có vốn từ vựng hằng ngày khá tốt.", "4": "Học viên có vốn từ vựng nâng cao và đa dạng."}}, {"name": "Use the synonym or paraphrase / Sử dụng từ đồng nghĩa và biết cách diễn đạt lại ý theo cách riêng của mình", "levels": {"1": "Học viên mới chỉ lặp lại theo câu hỏi khi trả lời.", "2": "Học viên đã thay thế được một số từ đồng nghĩa theo ý cá nhân nhưng còn rất hạn chế.", "3": "Học viên sử dụng từ đồng nghĩa khá đa dạng.", "4": "Học viên sử dụng từ đồng nghĩa rất đa dạng và linh hoạt."}}]}, {"group": "Grammatical Range and Accuracy / Ngữ pháp và Độ chính xác", "criteria": [{"name": "Speak in full sentences / Sử dụng nguyên câu khi nói", "levels": {"1": "Học viên chưa chủ động trong giao tiếp và đa số chưa tạo được câu hoàn chỉnh.", "2": "Học viên có sự chủ động trong giao tiếp nhưng đa số dùng câu trả lời ngắn.", "3": "Học viên khá chủ động giao tiếp và đã vận dụng được một số câu trả lời dài.", "4": "Học viên rất chủ động trong giao tiếp, trả lời được câu hỏi rất dài và đảm bảo logic."}}, {"name": "Speak in complex sentences / Sử dụng các mẫu câu phức tạp", "levels": {"1": "Học viên chưa nói được những câu đơn hoàn chỉnh.", "2": "Học viên chủ yếu nói câu đơn cơ bản.", "3": "Học viên đã có sự kết hợp câu đơn và một số câu phức.", "4": "Học viên kết hợp câu đơn và câu phức rất linh hoạt, dùng được cả những cấu trúc khó."}}, {"name": "Use correct tenses with correct forms of verbs / Sử dụng đúng thì với dạng chia của động từ", "levels": {"1": "Học viên chủ yếu dùng các thì đơn giản khi nói và chia động từ sai nhiều.", "2": "Học viên vận dụng kết hợp các thì cơ bản, đôi lúc còn chia sai động từ.", "3": "Học viên vận dụng các thì và cấu trúc câu phức cơ bản, đôi lúc còn nhầm lẫn khi chia động từ.", "4": "Học viên vận dụng các thì và cấu trúc phức tạp rất linh hoạt, rất hiếm khi chia động từ sai."}}]}, {"group": "Pronunciation/ Phát âm", "criteria": [{"name": "Pronounce clearly / Phát âm âm tiết cuối.", "levels": {"1": "Học viên phát âm còn ở mức rất cơ bản.", "2": "Học viên đã biết cách phát âm nhưng còn sai nhiều.", "3": "Học viên phát âm to, rõ ràng và khá chuẩn xác.", "4": "Học viên phát âm rất chuẩn xác."}}, {"name": "Pronounce with stress and intonation / Phát âm có âm cuối, nhấn và ngữ âm", "levels": {"1": "Học viên nói chưa có ngữ điệu.", "2": "Học viên nói có ngữ điệu cơ bản.", "3": "Học viên nói có vận dụng ngữ điệu khá tự nhiên.", "4": "Học viên nói có vận dụng ngữ điệu rất hay, nhấn nhá tốt."}}]}], "max": 4, "n": 10, "convert": [{"from": 10, "to": 17, "band": 2.0}, {"from": 18, "to": 21, "band": 2.5}, {"from": 22, "to": 24, "band": 3.0}, {"from": 25, "to": 27, "band": 3.5}, {"from": 28, "to": 33, "band": 4.0}, {"from": 34, "to": 37, "band": 4.5}, {"from": 38, "to": 40, "band": 5.0}]}, "GT": {"groups": [{"group": "Fluency and Coherence / Phản xạ và Độ lưu loát", "criteria": [{"name": "Avoid silence or hesitation? / Tránh được sự im lặng và do dự khi nói", "levels": {"1": "Học viên chưa tự tin, chưa chủ động tương tác với Giáo viên.", "2": "Học viên khá tự tin, đôi chỗ còn e dè nhưng có chủ động tương tác khi được cô hướng dẫn", "3": "Học viên tự tin, làm chủ được phần giao tiếp với Giáo viên nhưng câu trả lời còn đơn giản", "4": "Học viên rất tự tin, làm chủ phần Giao tiếp với câu trả lời dài"}}, {"name": "Use English only / Chỉ sử dụng tiếng Anh", "levels": {"1": "Đa số cần cô giải thích thêm bằng tiếng việt.", "2": "Học viên có sử dụng tiếng anh khá thường xuyên, nhiều lúc cần Giáo viên phải dịch sang Tiếng Việt nhưng không quá nhiều", "3": "Học viên sử dụng Tiếng anh thường xuyên, ít khi phải dịch sang Tiếng việt để hiểu.", "4": "Học viên sử dụng Tiếng anh linh hoạt, hết các câu đều hiểu và không cần dịch"}}, {"name": "Use correct words to express ideas? / Sử dụng từ hợp ngữ cảnh để diễn đạt ý", "levels": {"1": "Không sử dụng được hoặc sử dụng được rất ít từ vựng cơ bản", "2": "Hiểu và biết sử dụng từ vựng cơ bản để trả lời.", "3": "Hiểu và sử dụng 1 số từ vựng khá phù hợp ngữ cảnh để trả lời", "4": "Hiểu và sử dụng từ vựng nâng cao phù hợp ngữ cảnh để trả lời"}}]}, {"group": "Lexical Resources / Từ vựng", "criteria": [{"name": "Use a wide range of vocabulary? / Sử dụng vốn từ vựng đa dạng", "levels": {"1": "Vốn từ vựng rất ít", "2": "Vốn từ vựng hàng ngày cơ bản", "3": "Vốn từ vựng hàng ngày khá đa dạng.", "4": "Vốn từ vựng nâng cao đa dạng"}}, {"name": "Use the synonym or paraphrase / Sử dụng từ đồng nghĩa và biết cách diễn đạt lại ý theo cách riêng của mình", "levels": {"1": "Học viên lặp lại theo câu hỏi và chưa vận dụng được cách diễn đạt theo ý cá nhân", "2": "Học viên đã có thể thay thế 1 số từ đồng nghĩa trong cách diễn đạt theo ý cá nhân nhưng còn hạn chế", "3": "Học viên sử dụng từ đồng nghĩa khá linh hoạt", "4": "Học viên sử dụng từ đồng nghĩa rất đa dạng, linh hoạt"}}]}, {"group": "Grammatical Range and Accuracy / Ngữ pháp và Độ chính xác", "criteria": [{"name": "Speak in full sentences / Sử dụng nguyên câu khi nói", "levels": {"1": "Đa số HV chưa tạo được câu hoàn chỉnh.", "2": "Học viên tạo được câu hoàn chỉnh nhưng ngữ pháp đôi lúc chưa chính xác", "3": "Học viên tạo được câu hoàn chỉnh và ngữ pháp khá chuẩn xác.", "4": "Học viên rất chủ động trong việc giao tiếp và có thể trả lời các câu hỏi rất dài và đảm bảo sự logic"}}, {"name": "Speak in complex sentences / Sử dụng các mẫu câu phức tạp", "levels": {"1": "Học viên chỉ sử dụng được câu đơn.", "2": "Học viên chủ yếu nói câu đơn và đã kết hợp sử dụng câu phức nhưng không quá nhiều.", "3": "Học viên đã có sự kết hợp câu đơn và câu phức khá linh hoạt.", "4": "Học viên rất linh hoạt kết hợp các câu đơn và câu phức với những cấu trúc khó"}}, {"name": "Use correct tenses with correct forms of verbs / Sử dụng đúng thì với dạng chia của động từ", "levels": {"1": "Vận dụng chủ yếu các thì đơn giản khi nói và chia động từ sai nhiều.", "2": "Vận dụng kết hợp các thì cơ bản với cấu trúc phức tạp nhưng còn ít và còn sai chia động từ.", "3": "Vận dụng các thì, cấu trúc câu phức khá linh hoạt nhưng đôi chỗ còn nhầm lẫn chia động từ.", "4": "Vận dụng các thì, cấu trúc phức tạp rất linh hoạt, rất hiếm khi chia động từ sai"}}]}, {"group": "Pronunciation / Phát âm", "criteria": [{"name": "Pronounce clearly / Phát âm rõ ràng", "levels": {"1": "Phát âm rất cơ bản", "2": "Đã biết cách phát âm nhưng còn sai nhiều", "3": "Đã biết cách phát âm và sai sót 1 số chỗ không đáng kể.", "4": "Phát âm rất chuẩn xác"}}, {"name": "Pronounce with ending sounds, stress and intonation / Phát âm có âm cuối, nhấn và ngữ âm", "levels": {"1": "Nói chưa có ngữ điệu.", "2": "Nói có vận dụng ngữ điệu cơ bản.", "3": "Nói có vận dụng ngữ điệu khá hay", "4": "Nói có vận dụng ngữ điệu rất hay, nhấn nhá tốt."}}]}], "max": 4, "n": 10, "convert": [{"from": 10, "to": 19, "level": "PreA1", "lop": "Lớp Nền tảng 4 kỹ năng — đầu vào PreA1"}, {"from": 20, "to": 40, "level": "A1", "lop": "Lớp Nền tảng 4 kỹ năng — đầu vào A1"}]}, "KIDS123": {"groups": [{"group": "NGHE – NÓI Listening & Speaking", "criteria": [{"name": "Listening Nghe hiểu", "levels": {"1": "Học viên bắt đầu làm quen với việc nghe tiếng Anh, cần giáo viên hướng dẫn từ đầu.", "2": "Học viên có thể nghe hiểu cơ bản với chủ đề học.", "3": "Học viên có thể nghe hiểu tất cả các phần game và lời giáo viên nói mà không cần dịch."}}, {"name": "Pronunciation Phát âm", "levels": {"1": "Học viên bắt đầu làm quen với việc phát âm tiếng Anh, cần giáo viên hướng dẫn từ đầu.", "2": "Học viên có thể tự phát âm đúng các từ cơ bản trong chủ đề học.", "3": "Học viên có thể tự phát âm đúng tất cả các từ mà không cần giáo viên hướng dẫn ban đầu."}}]}, {"group": "TỪ VỰNG – NGỮ PHÁP Language", "criteria": [{"name": "Vocabulary Từ vựng", "levels": {"1": "Học viên bắt đầu làm quen với các từ vựng tiếng Anh.", "2": "Học viên nắm được tất cả vốn từ vựng trong chủ đề học mà không cần giáo viên gợi ý.", "3": "Học viên có vốn từ vựng khá, có thể triển khai ý tưởng ngoài chủ đề học."}}, {"name": "Grammar Ngữ pháp", "levels": {"1": "Học viên bắt đầu làm quen với ngữ pháp tiếng Anh.", "2": "Học viên đã biết đặt câu đơn giản với các từ vựng chủ đề học sau khi giáo viên hướng dẫn.", "3": "Học viên đã biết tự đặt câu chuẩn ngữ pháp với các từ vựng chủ đề học, không cần giáo viên hướng dẫn."}}]}], "max": 3, "n": 4, "convert": [{"from": 4, "to": 10, "level": "Starters", "lop": "Lớp Tiếng Anh Trẻ em — Starters"}, {"from": 11, "to": 12, "level": "Movers", "lop": "Lớp Tiếng Anh Trẻ em — Movers"}, {"from": 13, "to": 16, "level": "Flyers", "lop": "Lớp Tiếng Anh Trẻ em — Flyers"}]}, "KIDS45": {"groups": [{"group": "NGHE – NÓI Listening & Speaking", "criteria": [{"name": "Listening Nghe hiểu", "levels": {"1": "Học viên bắt đầu làm quen với việc nghe tiếng Anh, cần giáo viên hướng dẫn từ đầu.", "2": "Học viên có thể nghe hiểu cơ bản với chủ đề học, ít khi cần giáo viên dịch.", "3": "Học viên có thể nghe hiểu hầu hết các phần game và lời giáo viên nói mà không cần dịch.", "4": "Học viên có thể nghe hiểu tất cả các phần giáo viên nói mà không cần dịch."}}, {"name": "Pronunciation Phát âm", "levels": {"1": "Học viên bắt đầu làm quen với việc phát âm tiếng Anh, cần giáo viên hướng dẫn từ đầu.", "2": "Học viên có thể tự phát âm đúng các từ cơ bản trong chủ đề học, ít khi cần giáo viên hướng dẫn.", "3": "Học viên có thể tự phát âm đúng tất cả các từ mà không cần giáo viên hướng dẫn ban đầu.", "4": "Học viên có thể tự phát âm chuẩn, ngữ điệu hay và tự nhiên."}}]}, {"group": "TỪ VỰNG – NGỮ PHÁP Language", "criteria": [{"name": "Vocabulary Từ vựng", "levels": {"1": "Học viên bắt đầu làm quen với các từ vựng tiếng Anh.", "2": "Học viên nắm được tất cả vốn từ vựng trong chủ đề học, ít khi cần giáo viên gợi ý.", "3": "Học viên có vốn từ vựng khá, có thể triển khai ý tưởng và câu nói ngắn ngoài chủ đề học.", "4": "Học viên có vốn từ vựng tốt, có thể triển khai ý tưởng và sáng tạo với bài nói dài trong chủ đề học."}}, {"name": "Grammar Ngữ pháp", "levels": {"1": "Học viên bắt đầu làm quen với ngữ pháp tiếng Anh.", "2": "Học viên đã biết đặt câu đơn giản với các từ vựng chủ đề học sau khi giáo viên hướng dẫn.", "3": "Học viên đã biết tự đặt câu chuẩn ngữ pháp trong chủ đề học mà không cần giáo viên hướng dẫn.", "4": "Học viên đã biết tự đặt câu với một số ngữ pháp phức tạp trong chủ đề học mà không cần giáo viên hướng dẫn."}}]}], "max": 4, "n": 4, "convert": [{"from": 4, "to": 10, "level": "Starters", "lop": "Lớp Tiếng Anh Trẻ em — Starters"}, {"from": 11, "to": 14, "level": "Movers", "lop": "Lớp Tiếng Anh Trẻ em — Movers"}, {"from": 15, "to": 16, "level": "Flyers", "lop": "Lớp Tiếng Anh Trẻ em — Flyers"}]}};
+/* ============ ALES CRM — cấu hình gốc của trung tâm ============ */
+const TODAY = new Date(2026, 7, 20);
+
+/* ---- cơ sở ---- */
+const COSO = [
+  { id: "TDN", name: "Trần Đại Nghĩa" },
+  { id: "PTT", name: "Phạm Tuấn Tài" },
+  { id: "HVT", name: "Hoàng Văn Thái" },
+  { id: "TTB", name: "Trần Tử Bình" },
+  { id: "HCM", name: "TP. Hồ Chí Minh" }
+];
+const cosoOf = id => COSO.find(c => c.id === id) || { id: "?", name: "—" };
+
+/* ---- thang trạng thái khách hàng L1→L9 ---- */
+const LEVELS = [
+  { id: "L1", name: "Tồn", color: "#4a6fa5", open: 1 },
+  { id: "L2", name: "Chưa tiếp cận", color: "#3aa8c1", open: 1 },
+  { id: "L3", name: "Nóng", color: "#d03b3b", open: 1 },
+  { id: "L4", name: "Tiềm năng", color: "#eb6834", open: 1 },
+  { id: "L5", name: "Đặt lịch", color: "#1baf7a", open: 1 },
+  { id: "L6", name: "Đến", color: "#4a3aa7", open: 1 },
+  { id: "L7", name: "Cọc", color: "#e87ba4", open: 1 },
+  { id: "L8", name: "Đã HTHP", color: "#0ca30c", open: 0 },
+  { id: "L9", name: "Bỏ", color: "#52514e", open: 0 }
+];
+const lvOf = id => LEVELS.find(l => l.id === id) || LEVELS[0];
+const OPEN_LV = LEVELS.filter(l => l.open).map(l => l.id);
+
+/* ---- nguồn & fanpage ---- */
+const SOURCES = [
+  { id: "fanpage", name: "Fanpage" }, { id: "zalo", name: "Zalo OA" },
+  { id: "hotline", name: "Hotline" }, { id: "website", name: "Website / Form" },
+  { id: "gioithieu", name: "Học viên giới thiệu" }, { id: "walkin", name: "Khách đến trực tiếp" },
+  { id: "tiktok", name: "TikTok" }, { id: "sukien", name: "Sự kiện tại trường" }
+];
+const srcOf = id => SOURCES.find(s => s.id === id) || { name: id };
+
+/* fanpage: tên page ghép tên MKT phụ trách */
+const PAGES = [
+  { id: "p1", name: "Anh ngữ ALES - Gia sư IELTS trực tuyến - Nam", mkt: "Nam", tep: "3555" },
+  { id: "p2", name: "Ales Online - tiếng Anh trực tuyến 1 thầy kèm 1 trò - Kiêm", mkt: "Kiêm", tep: "3555" },
+  { id: "p3", name: "[THCN-FB] Chu Đăng Điệp - Anh ngữ ALES - Nam", mkt: "Nam", tep: "THCN" },
+  { id: "p4", name: "[VK] ALES cho người Việt ở nước ngoài", mkt: "Hùng", tep: "VK" },
+  { id: "p5", name: "ALES TikTok - Hùng", mkt: "Hùng", tep: "TIKTOK" }
+];
+const pageOf = id => PAGES.find(p => p.id === id) || { name: "—", mkt: "—", tep: "" };
+
+/* tệp quảng cáo: VK đánh 18-65, còn lại 35-55 */
+const TEP = [
+  { id: "3555", name: "FB 35-55", tuoi: "35-65" },
+  { id: "THCN", name: "THCN (thương hiệu cá nhân)", tuoi: "35-55" },
+  { id: "VK", name: "Việt Kiều", tuoi: "18-65" },
+  { id: "TIKTOK", name: "TikTok", tuoi: "35-55" }
+];
+const tepOf = id => TEP.find(t => t.id === id) || { name: "—" };
+
+/* ---- tỉnh Vua (xét lại theo quý) ---- */
+const TINH_VUA_Q3_2026 = ["Hưng Yên", "Hải Dương", "Vĩnh Phúc", "Bắc Giang", "Hải Phòng", "Quảng Ninh",
+  "Cao Bằng", "Hà Giang", "Thái Nguyên", "Thanh Hoá", "Lâm Đồng", "Đồng Nai", "Bình Phước",
+  "Quảng Bình", "Phú Yên", "Nghệ An"];
+const TINH_KHAC = ["Hà Nội", "Nam Định", "Ninh Bình", "Thái Bình", "Bắc Ninh", "Sơn La", "Lào Cai",
+  "Tuyên Quang", "Hà Tĩnh", "Quảng Trị", "Đắk Lắk", "Vĩnh Long", "Cần Thơ", "TP.HCM", "Yên Bái", "Hoà Bình"];
+const ALL_TINH = TINH_VUA_Q3_2026.concat(TINH_KHAC);
+const laTinhVua = t => TINH_VUA_Q3_2026.includes(t);
+
+/* ---- cấp học & lớp ---- */
+const CAPHOC = [
+  { id: "c1", name: "Cấp 1", dungTep: 0 }, { id: "c2", name: "Cấp 2", dungTep: 1 },
+  { id: "c3", name: "Cấp 3", dungTep: 1 }, { id: "sv", name: "Sinh viên / đi làm", dungTep: 0 },
+  { id: "cxd", name: "Chưa xác định", dungTep: 0 }
+];
+const capOf = id => CAPHOC.find(c => c.id === id) || { name: "—", dungTep: 0 };
+const LOPS = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "L11", "L12", "Đại học", "Đi làm"];
+
+/* ---- 24 khoá học (bảng gốc của ALES) ---- */
+const COURSES = [
+  { nhom: "IELTS — người mới bắt đầu", code: "MI42", name: "Cam kết 4.0–4.5 IELTS", goc: 58e6, uudai: 24e6, gio: 120, gvvn: 90, gvnn: 30, gs: 30, tainghe: 1, ct: "IELTS" },
+  { nhom: "IELTS — người mới bắt đầu", code: "MI5", name: "Cam kết 5.0–5.5 IELTS", goc: 80e6, uudai: 41e6, gio: 170, gvvn: 120, gvnn: 50, gs: 50, tainghe: 1, ct: "IELTS" },
+  { nhom: "IELTS — người mới bắt đầu", code: "MI6", name: "Cam kết 6.0–6.5 IELTS", goc: 114e6, uudai: 58e6, gio: 230, gvvn: 160, gvnn: 70, gs: 80, tainghe: 1, ct: "IELTS" },
+  { nhom: "IELTS — người mới bắt đầu", code: "MI7", name: "Cam kết 7.0–7.5 IELTS", goc: 155e6, uudai: 80e6, gio: 290, gvvn: 220, gvnn: 70, gs: 110, tainghe: 1, ct: "IELTS" },
+  { nhom: "IELTS — có nền tảng", code: "I04", name: "Cam kết 4.0–4.5 IELTS", goc: 40e6, uudai: 18e6, gio: 60, gvvn: 60, gvnn: 0, gs: 30, tainghe: 1, ct: "IELTS" },
+  { nhom: "IELTS — có nền tảng", code: "I05", name: "Cam kết 5.0–5.5 IELTS", goc: 62e6, uudai: 28e6, gio: 100, gvvn: 80, gvnn: 20, gs: 50, tainghe: 1, ct: "IELTS" },
+  { nhom: "IELTS — có nền tảng", code: "I06", name: "Cam kết 6.0–6.5 IELTS", goc: 96e6, uudai: 45e6, gio: 160, gvvn: 120, gvnn: 40, gs: 80, tainghe: 1, ct: "IELTS" },
+  { nhom: "IELTS — có nền tảng", code: "I07", name: "Cam kết 7.0–7.5 IELTS", goc: 140e6, uudai: 67e6, gio: 220, gvvn: 180, gvnn: 40, gs: 110, tainghe: 1, ct: "IELTS" },
+  { nhom: "IELTS — đầu vào 4.0–4.5", code: "I45", name: "Cam kết 5.0–5.5 IELTS", goc: 40e6, uudai: 18e6, gio: 60, gvvn: 60, gvnn: 0, gs: 30, tainghe: 1, ct: "IELTS" },
+  { nhom: "IELTS — đầu vào 4.0–4.5", code: "I46", name: "Cam kết 6.0–6.5 IELTS", goc: 78e6, uudai: 35e6, gio: 120, gvvn: 100, gvnn: 20, gs: 60, tainghe: 1, ct: "IELTS" },
+  { nhom: "IELTS — đầu vào 4.0–4.5", code: "I47", name: "Cam kết 7.0–7.5 IELTS", goc: 115e6, uudai: 57e6, gio: 180, gvvn: 160, gvnn: 20, gs: 90, tainghe: 1, ct: "IELTS" },
+  { nhom: "IELTS — đầu vào 5.0–5.5", code: "I56", name: "Cam kết 6.0–6.5 IELTS", goc: 40e6, uudai: 18e6, gio: 60, gvvn: 60, gvnn: 0, gs: 30, tainghe: 1, ct: "IELTS" },
+  { nhom: "IELTS — đầu vào 5.0–5.5", code: "I57", name: "Cam kết 7.0–7.5 IELTS", goc: 79e6, uudai: 40e6, gio: 120, gvvn: 120, gvnn: 0, gs: 60, tainghe: 1, ct: "IELTS" },
+  { nhom: "IELTS — đầu vào 6.0–6.5", code: "I67", name: "Cam kết 7.0–7.5 IELTS", goc: 42e6, uudai: 22e6, gio: 60, gvvn: 60, gvnn: 0, gs: 30, tainghe: 1, ct: "IELTS" },
+  { nhom: "Giao tiếp", code: "VP70", name: "Đầu vào Pre-A1 → giao tiếp nền tảng", goc: 18e6, uudai: 13e6, gio: 70, gvvn: 40, gvnn: 30, gs: 0, tainghe: 1, ct: "GT" },
+  { nhom: "Giao tiếp", code: "VP70_A2", name: "Đầu vào A1 → giao tiếp nâng cao", goc: 18e6, uudai: 13e6, gio: 70, gvvn: 40, gvnn: 30, gs: 0, tainghe: 1, ct: "GT" },
+  { nhom: "Giao tiếp", code: "VP105", name: "Pre-A1 → A1 (giáo viên nước ngoài)", goc: 27e6, uudai: 18.9e6, gio: 105, gvvn: 65, gvnn: 40, gs: 52, tainghe: 1, ct: "GT" },
+  { nhom: "Giao tiếp", code: "VP105_A2", name: "A1 → A2 (giáo viên nước ngoài)", goc: 27e6, uudai: 18.9e6, gio: 105, gvvn: 65, gvnn: 40, gs: 52, tainghe: 1, ct: "GT" },
+  { nhom: "Kids", code: "VPK1H_S50", name: "Starters → Starters", goc: 14e6, uudai: 9.8e6, gio: 50, gvvn: 20, gvnn: 30, gs: 36, tainghe: 1, ct: "KIDS" },
+  { nhom: "Kids", code: "VPK1H_M50", name: "Movers → Movers", goc: 14e6, uudai: 9.8e6, gio: 50, gvvn: 20, gvnn: 30, gs: 36, tainghe: 1, ct: "KIDS" },
+  { nhom: "Kids", code: "VPK1H_F50", name: "Flyers → Flyers", goc: 14e6, uudai: 9.8e6, gio: 50, gvvn: 20, gvnn: 30, gs: 36, tainghe: 1, ct: "KIDS" },
+  { nhom: "Kids", code: "VPK1H_M96", name: "Starters → Movers", goc: 28e6, uudai: 16e6, gio: 96, gvvn: 40, gvnn: 56, gs: 48, tainghe: 1, ct: "KIDS" },
+  { nhom: "Kids", code: "VPK1H_F96", name: "Movers → Flyers", goc: 28e6, uudai: 16e6, gio: 96, gvvn: 40, gvnn: 56, gs: 48, tainghe: 1, ct: "KIDS" }
+];
+const courseOf = c => COURSES.find(x => x.code === c) || null;
+
+/* ---- chương trình test ---- */
+const PROGRAMS = [
+  { id: "IELTS", name: "IELTS (4 kỹ năng)", cong: 60000 },
+  { id: "GT", name: "Giao tiếp — nền tảng 4 kỹ năng", cong: 45000 },
+  { id: "KIDS123", name: "Kids — lớp ≤ 3", cong: 45000 },
+  { id: "KIDS45", name: "Kids — lớp 4–5", cong: 45000 }
+];
+const progOf = id => PROGRAMS.find(p => p.id === id) || PROGRAMS[0];
+
+/* bảng quy đổi số câu đúng → band (Reading & Listening, 20 câu) */
+const RL_BAND = [[3, 4, 2.5], [5, 6, 3.0], [7, 9, 3.5], [10, 12, 4.0], [13, 15, 4.5], [16, 19, 5.0], [20, 20, 5.5]];
+const rlBand = n => { for (const [a, b, v] of RL_BAND) if (n >= a && n <= b) return v; return 2.0; };
+/* Writing: 4 tiêu chí thang 2.0–4.5, trung bình cộng, làm tròn .25→.5 / .75→1.0 */
+const WRITING_CRIT = ["1. TASK RESPONSE", "2. COHERENCE AND COHESION", "3. VOCABULARY", "4. LEXICAL GRAMMAR"];
+const WRITING_SCALE = [2.0, 3.0, 4.0, 4.5];
+const roundW = v => { const f = v - Math.floor(v); const b = Math.floor(v); return f < 0.25 ? b : f < 0.75 ? b + 0.5 : b + 1; };
+/* Speaking tổng 10–40 → band */
+const spBand = t => { for (const c of RUBRIC.IELTS.convert) if (t >= c.from && t <= c.to) return c.band; return 2.0; };
+/* xếp lớp IELTS */
+function xepLopIELTS(sp, wr, re, li) {
+  const arr = [sp, wr, re, li].filter(x => x != null);
+  const min = arr.length ? Math.min(...arr) : 0;
+  if (min >= 4.0 && arr.length === 4) return "Lớp IELTS 4.0+";
+  if (sp != null && sp < 2.5) return "Lớp IELTS mất gốc";
+  if (sp != null && sp < 4.0) return "Lớp IELTS cơ bản";
+  return "Lớp IELTS cơ bản";
+}
+function xepLopKhac(prog, total) {
+  const cv = RUBRIC[prog] && RUBRIC[prog].convert || [];
+  for (const c of cv) if (total >= c.from && total <= c.to) return { level: c.level, lop: c.lop };
+  return { level: "—", lop: "—" };
+}
+
+/* ---- tỷ lệ chuẩn cố định cả năm ---- */
+const CHUAN = { datlich_data: .25, den_datlich: .76, dangky_den: .25 };
+const TLCD = { ca_nhan_min: .04, ca_nhan_aim: .06, team_min: .04, team_aim: .05 };
+const CP_DT_HIEU_QUA = .20;
+const MPOS_FEE = .022;
+
+/* ---- ca test: cách nhau 50 phút ---- */
+const CA_TOI = ["19:00", "19:50", "20:40", "21:30"];
+const CA_SANG = ["08:30", "09:20", "10:10", "11:00"];
+const caTrongNgay = d => { const dow = d.getDay(); return (dow === 0 || dow === 6) ? CA_SANG : CA_TOI; };
+const THIETBI = ["Máy tính", "Điện thoại", "Máy tính bảng"];
+
+/* ---- vai trò ---- */
+const ROLES = [
+  { id: "admin", name: "Ban giám đốc / Admin" }, { id: "sales", name: "Tư vấn (Sales)" },
+  { id: "ql", name: "Quản lý team" }, { id: "ketoan", name: "Kế toán" },
+  { id: "mkt", name: "Marketing" }, { id: "tester", name: "Tester" },
+  { id: "hr", name: "HR" }, { id: "daotao", name: "Đào tạo" }, { id: "cskh", name: "CSKH" }
+];
+const roleOf = id => ROLES.find(r => r.id === id) || ROLES[1];
+
+/* ---- nhân sự thật của ALES ---- */
+const AVC = ["#2a78d6", "#eb6834", "#1baf7a", "#4a3aa7", "#e34948", "#008300", "#e87ba4", "#1c5cab", "#c98500"];
+let _u = 0; const U = (name, role, team, coso, extra) => Object.assign({ id: "U" + (++_u), name, role, team, coso, color: AVC[_u % AVC.length], active: 1 }, extra || {});
+const USERS = [
+  U("Chu Đăng Điệp", "admin", null, "HVT"),
+  U("Hiên Lê", "ketoan", null, "HVT"),
+  U("Đoàn Thu Hoài", "ketoan", null, "TDN"),
+  U("Vũ Tuấn Hùng", "mkt", null, "HVT", { mkt: "Hùng" }),
+  U("MKT Nam", "mkt", null, "HVT", { mkt: "Nam" }),
+  U("MKT Kiêm", "mkt", null, "HVT", { mkt: "Kiêm" }),
+  U("Vương Thị Huệ", "ql", "T1", "HVT"),
+  U("Nguyễn Thị Thu Hương", "sales", "T1", "HVT"),
+  U("Nguyễn Thị Hiền", "sales", "T1", "HVT"),
+  U("Nguyễn Hải Yến", "sales", "T1", "HVT"),
+  U("Trịnh Thị Vân Anh", "sales", "T1", "HVT"),
+  U("Phạm Thị Thu", "ql", "T2", "TDN"),
+  U("Khuất Hằng Ngân", "sales", "T2", "TDN"),
+  U("Trần Thị Thùy Linh", "sales", "T2", "TDN"),
+  U("Nguyễn Phương Thuỷ", "sales", "T2", "TDN"),
+  U("Lưu Thị Quyên", "sales", "T2", "TDN"),
+  U("Nguyễn Thị Lan", "ql", "T3", "TTB"),
+  U("Đỗ Kiều Trang", "sales", "T3", "TTB"),
+  U("Nguyễn Thị Tuyển", "sales", "T3", "TTB"),
+  U("Lê Thị Lan", "sales", "T3", "TTB"),
+  U("Nguyễn Hiền Minh", "sales", "T3", "TTB"),
+  U("Bùi Thị Hảo", "cskh", null, "HVT", { cskh: "CSKH 01" }),
+  U("Chu Thị Xoan", "cskh", null, "HVT", { cskh: "CSKH 02" }),
+  U("Nguyễn Ngọc Lê", "cskh", null, "TDN", { cskh: "CSKH 04" }),
+  U("Nguyễn Thị Minh Ngọc", "cskh", null, "TTB", { cskh: "CSKH 02" }),
+  U("Nguyễn Thị Huyền", "cskh", null, "HVT", { cskh: "CSKH 06" }),
+  U("Phạm Thị Ánh", "hr", null, "HVT"),
+  U("Nguyễn Thị Hằng", "daotao", null, "HVT"),
+  U("Ms. Phượng", "tester", null, "HVT", { gv: "GV01" }),
+  U("Ms. Mai Anh", "tester", null, "HVT", { gv: "GV02" }),
+  U("Ms. Trang", "tester", null, "TDN", { gv: "GV03" }),
+  U("Ms. Hương", "tester", null, "TDN", { gv: "GV04" }),
+  U("Ms. Nhi", "tester", null, "TTB", { gv: "GV05" }),
+  U("Ms. Hà Chi", "tester", null, "TTB", { gv: "GV06" }),
+  U("Ms. Chi", "tester", null, "HVT", { gv: "GV07" }),
+  U("Mr. Đức", "tester", null, "HVT", { gv: "GV08" }),
+  U("Ms. Thùy", "tester", null, "TDN", { gv: "GV09" })
+];
+const TEAMS = [
+  { id: "T1", name: "TEAM HUỆ", coso: "HVT", ql: "U7", target: 300e6 },
+  { id: "T2", name: "TEAM THU", coso: "TDN", ql: "U12", target: 280e6 },
+  { id: "T3", name: "TEAM LAN", coso: "TTB", ql: "U17", target: 250e6 }
+];
+const teamOf = id => TEAMS.find(t => t.id === id) || { name: "—", coso: "", target: 0 };
+const userOf = id => USERS.find(u => u.id === id) || { id: null, name: "Chưa phân bổ", color: "#898781", role: "sales", team: null, coso: null };
+const usersBy = role => USERS.filter(u => u.role === role && u.active);
+const SALES = USERS.filter(u => (u.role === "sales" || u.role === "ql") && u.active);
+const TESTERS = USERS.filter(u => u.role === "tester" && u.active);
+
+/* chỉ tiêu doanh thu cá nhân theo tháng */
+SALES.forEach((s, i) => s.target = s.role === "ql" ? 110e6 : [55e6, 65e6, 75e6, 85e6][i % 4]);
+
+/* ---- giáo viên dạy (khác tester) ---- */
+const GIAOVIEN = ["Nguyễn Diệu Uyên", "Trần Thu Hiền", "Nguyễn Ngọc Minh", "Trần Dũng Cường",
+  "Phạm Khánh Linh", "Hoàng Hà Trang", "Lê Minh Quân", "Đặng Thu Phương"];
+
+/* ---- lịch sử gọi mẫu ---- */
+const NOTE_MAU = [
+  "Gọi lần 1, phụ huynh bận, hẹn gọi lại buổi tối.",
+  "Đã gửi lịch khai giảng qua Zalo, khách xem rồi.",
+  "Khách quan tâm lớp tối T3-T5, hỏi kỹ về giáo viên.",
+  "Đã tư vấn lộ trình, khách xin về bàn với gia đình.",
+  "Khách hỏi chính sách chia đợt học phí.",
+  "Nhắc lịch test đầu vào, khách xác nhận đến đúng giờ.",
+  "Gửi phiếu kết quả test + đề xuất lớp qua Zalo.",
+  "Khách so sánh với trung tâm khác, cần gửi thêm feedback HV cũ.",
+  "Máy bận, đã nhắn tin Zalo.",
+  "Khách hẹn cuối tuần cho con học thử 1 buổi."
+];
+const LYDO_BO = ["Học phí cao hơn dự kiến", "Chọn trung tâm khác", "Lịch học không phù hợp",
+  "Chưa sắp xếp được thời gian", "Không liên lạc được", "Chỉ hỏi thăm dò", "Con không thích học thêm"];
+const MUCTIEU = ["Thi IELTS xét tuyển ĐH", "Du học Úc", "Du học Canada", "Xét tốt nghiệp THPT",
+  "Nâng band xin học bổng", "Thi vào 10", "Bố mẹ muốn con học sớm", "Đi làm / phỏng vấn"];
+/* ============ Sinh dữ liệu mẫu bám theo số liệu thật của ALES ============ */
+const rnd = (function (s) { return function () { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; }; })(20260820);
+const pick = a => a[Math.floor(rnd() * a.length)];
+const pickW = a => { const t = a.reduce((s, x) => s + x[1], 0); let r = rnd() * t; for (const x of a) { r -= x[1]; if (r <= 0) return x[0]; } return a[0][0]; };
+const ri = (a, b) => a + Math.floor(rnd() * (b - a + 1));
+const dAdd = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const fmtD = s => s ? s.slice(8, 10) + "/" + s.slice(5, 7) + "/" + s.slice(0, 4) : "—";
+const fmtVND = n => new Intl.NumberFormat("vi-VN").format(Math.round(n || 0)) + "₫";
+const fmtM = n => !n ? "0" : n >= 1e9 ? (n / 1e9).toFixed(2).replace(/\.?0+$/, "") + " tỷ" : Math.round(n / 1e6) + " tr";
+
+const HO = ["Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Vũ", "Đặng", "Bùi", "Đỗ", "Hồ", "Ngô", "Dương", "Lý", "Phan", "Mai", "Tạ", "Trịnh", "Cao", "Đinh", "Lâm", "Vương", "Khuất"];
+const DEM = ["Thị", "Văn", "Minh", "Gia", "Hải", "Thu", "Quang", "Đức", "Ngọc", "Bảo", "Khánh", "Hoàng", "Anh", "Phương", "Tuấn", "Diệu", "Xuân", "Trí"];
+const TEN = ["An", "Bình", "Chi", "Dung", "Duy", "Giang", "Hà", "Hiếu", "Huy", "Khang", "Khoa", "Lan", "Linh", "Long", "Mai", "Minh", "Nam", "Nhung", "Phúc", "Quân", "Quỳnh", "Sơn", "Thảo", "Thắng", "Trang", "Trung", "Tú", "Vy", "Yến", "Ánh", "Đạt", "Kiệt", "Ly", "My", "Ngân", "Như", "Phong", "Tâm", "Thư", "Uyên", "Khuê", "Ngọc"];
+const vname = () => `${pick(HO)} ${pick(DEM)} ${pick(TEN)}`;
+const phone = () => pick(["09", "03", "07", "08", "05"]) + Array.from({ length: 8 }, () => ri(0, 9)).join("");
+
+function seed(n) {
+  const KH = [], TESTS = [], ORDERS = [];
+  let oi = 3900;
+  for (let i = 0; i < n; i++) {
+    const created = dAdd(TODAY, -ri(0, 200));
+    const daysOld = Math.round((TODAY - created) / 864e5);
+    const page = pickW([["p1", 30], ["p2", 22], ["p3", 20], ["p4", 8], ["p5", 12]]);
+    const P = pageOf(page);
+    const source = P.tep === "TIKTOK" ? "tiktok" : pickW([["fanpage", 55], ["zalo", 12], ["hotline", 9], ["website", 9], ["gioithieu", 8], ["walkin", 4], ["sukien", 3]]);
+    const cap = pickW([["c2", 34], ["c3", 33], ["c1", 20], ["sv", 6], ["cxd", 7]]);
+    const lop = cap === "c1" ? pick(["L1", "L2", "L3", "L4", "L5"]) : cap === "c2" ? pick(["L6", "L7", "L8", "L9"])
+      : cap === "c3" ? pick(["L10", "L11", "L12"]) : cap === "sv" ? pick(["Đại học", "Đi làm"]) : "";
+    const prog = cap === "c1" ? (["L1", "L2", "L3"].includes(lop) ? "KIDS123" : "KIDS45")
+      : cap === "sv" ? pickW([["GT", 60], ["IELTS", 40]]) : pickW([["IELTS", 80], ["GT", 20]]);
+    const tinh = rnd() < .48 ? pick(TINH_VUA_Q3_2026) : pick(TINH_KHAC);
+
+    /* trạng thái hiện tại — tỉ trọng bám theo số thật trên Getfly của ALES */
+    const LV_W = daysOld < 7
+      ? [["L1", 6], ["L2", 30], ["L3", 30], ["L4", 18], ["L5", 10], ["L6", 4], ["L7", 1], ["L8", 1], ["L9", 0]]
+      : daysOld < 30
+        ? [["L1", 10], ["L2", 12], ["L3", 24], ["L4", 20], ["L5", 8], ["L6", 14], ["L7", 2], ["L8", 5], ["L9", 5]]
+        : [["L1", 22], ["L2", 11], ["L3", 18], ["L4", 15], ["L5", 4], ["L6", 15], ["L7", 1], ["L8", 5], ["L9", 9]];
+    const level = pickW(LV_W);
+    const IDX = { L1: 0, L2: 1, L3: 2, L4: 3, L5: 4, L6: 5, L7: 6, L8: 7 };
+    /* prog_i = bước xa nhất đã đi tới; khách L9 thì dừng ở đâu đó giữa chừng */
+    const prog_i = level === "L9" ? pickW([[0, 8], [1, 14], [2, 20], [3, 20], [4, 10], [5, 28]]) : IDX[level];
+
+    const team = pick(TEAMS);
+    const teamSales = SALES.filter(s => s.team === team.id);
+    const owner = (level === "L1" && rnd() < .4) ? null : pick(teamSales).id;
+    const k = {
+      id: "KH" + (110000 + i),
+      hoTenHV: vname(), hoTenPH: cap === "sv" ? "" : vname(),
+      phone: phone(), email: rnd() < .5 ? `${pick(TEN).toLowerCase()}${ri(70, 99)}@gmail.com` : "",
+      ngaySinh: iso(new Date(2026 - (cap === "c1" ? ri(7, 11) : cap === "c2" ? ri(12, 15) : cap === "c3" ? ri(15, 18) : ri(19, 34)), ri(0, 11), ri(1, 28))),
+      tinh, cap, lop, page, tep: P.tep, source,
+      zaloOA: prog_i >= 2 ? 1 : (rnd() < .3 ? 1 : 0),
+      chuongTrinh: prog,
+      owner, team: team.id, coso: team.coso,
+      level, kho: 0,
+      mucTieu: cap === "c1" ? pick(["Bố mẹ muốn con học sớm", "Xây nền tảng tiểu học", "Chuẩn bị thi cấp 2"]) : pick(MUCTIEU),
+      createdAt: iso(created), lyDoBo: null, acts: [], next: null, tests: [], orders: []
+    };
+    /* --- hành trình --- */
+    let cur = new Date(created);
+    k.acts.push({ t: iso(cur), type: "note", text: `Data mới từ ${srcOf(source).name} · page ${P.name}. Mục tiêu: ${k.mucTieu}.`, by: owner });
+    if (prog_i >= 1) { cur = dAdd(cur, ri(0, 2)); k.acts.push({ t: iso(cur), type: rnd() < .6 ? "call" : "zalo", text: pick(NOTE_MAU), by: owner }); }
+    if (prog_i >= 2) { cur = dAdd(cur, ri(1, 4)); k.acts.push({ t: iso(cur), type: "call", text: "Trao đổi nhu cầu, khách quan tâm chương trình " + progOf(prog).name + ".", by: owner }); }
+    /* đặt lịch test khi tới L5 trở lên */
+    if (prog_i >= 4) {
+      cur = dAdd(cur, ri(1, 5)); if (cur > TODAY) cur = dAdd(TODAY, -ri(0, 2));
+      const tester = pick(TESTERS);
+      let td, done = 1;
+      if (level === "L5") { td = dAdd(TODAY, ri(0, 14)); done = 0; }
+      else { td = dAdd(cur, ri(1, 7)); if (td > TODAY) { const sp = Math.max(1, Math.round((TODAY - created) / 864e5)); td = dAdd(TODAY, -ri(0, Math.min(20, sp))); } }
+      const ca = pick(caTrongNgay(td));
+      const T = {
+        id: "TS" + (5000 + TESTS.length), khId: k.id, testerId: tester.id, prog: k.chuongTrinh,
+        date: iso(td), gio: ca, thietBi: pickW([["Máy tính", 78], ["Điện thoại", 18], ["Máy tính bảng", 4]]),
+        status: done ? (rnd() < .12 ? "absent" : "done") : "booked",
+        scores: {}, comments: {}, gvNhanXet: {}, wr: {}, re: null, li: null,
+        total: null, band: null, lopDeXuat: null, video: "", phThamGia: rnd() < .6 ? 1 : 0, hrPhut: null, filledAt: null, saleId: owner
+      };
+      if (T.status === "done") {
+        const R = RUBRIC[T.prog], mx = R.max;
+        let tot = 0;
+        R.groups.forEach((g, gi) => g.criteria.forEach((c, ci) => {
+          const key = gi + "-" + ci;
+          const base = prog_i >= 7 ? ri(2, mx) : ri(1, Math.max(2, mx - 1));
+          T.scores[key] = base; tot += base;
+          T.comments[key] = (c.levels[String(base)] || "").replace(/^Học viên/, k.hoTenHV.split(" ").slice(-2).join(" "));
+        }));
+        T.total = tot;
+        if (T.prog === "IELTS") {
+          T.band = spBand(tot);
+          WRITING_CRIT.forEach(w => T.wr[w] = pick(WRITING_SCALE));
+          T.re = ri(2, 14); T.li = ri(2, 14);
+          const wAvg = roundW(Object.values(T.wr).reduce((a, b) => a + b, 0) / 4);
+          T.wrBand = wAvg; T.reBand = rlBand(T.re); T.liBand = rlBand(T.li);
+          T.lopDeXuat = xepLopIELTS(T.band, T.wrBand, T.reBand, T.liBand);
+        } else {
+          const x = xepLopKhac(T.prog, tot); T.band = null; T.trinhDo = x.level; T.lopDeXuat = x.lop;
+        }
+        ["Phát âm", "Ngữ pháp", "Từ vựng", "Độ trôi chảy", "Tính cách & sự tiếp thu", "Độ phù hợp với phương pháp online 1 kèm 1"]
+          .forEach(t2 => T.gvNhanXet[t2] = t2 === "Độ phù hợp với phương pháp online 1 kèm 1" ? pick(["Rất phù hợp", "Phù hợp"]) : "");
+        T.video = "https://teams.microsoft.com/rec/" + Math.floor(rnd() * 1e9);
+        T.hrPhut = pick([60, 60, 45, 45, 50, 47]);
+        T.filledAt = T.date;
+      }
+      TESTS.push(T); k.tests.push(T.id);
+      k.acts.push({ t: iso(cur), type: "test", text: `Đặt lịch test ${fmtD(T.date)} ${T.gio} · ${tester.name} (${tester.gv}).`, by: owner });
+      if (T.status === "done") k.acts.push({ t: T.date, type: "test", text: `Hoàn thành ca test — ${T.lopDeXuat}.`, by: tester.id });
+    }
+    /* chốt đơn — L7 đã cọc (chưa đóng đủ), L8 đã hoàn thành học phí */
+    if (level === "L7" || level === "L8") {
+      const pool = COURSES.filter(c => c.ct === (k.chuongTrinh.startsWith("KIDS") ? "KIDS" : k.chuongTrinh));
+      const C = pick(pool.length ? pool : COURSES);
+      cur = dAdd(cur, ri(1, 10)); if (cur > TODAY) cur = dAdd(TODAY, -ri(0, 3));
+      const lech = rnd() < .12 ? ri(-3, 3) * 1e6 : 0;
+      const dt = C.uudai + lech;
+      const soDot = level === "L8" ? pickW([[1, 45], [2, 35], [3, 15], [4, 5]]) : pickW([[2, 45], [3, 35], [4, 20]]);
+      const dots = []; let con = dt;
+      for (let d = 0; d < soDot; d++) {
+        const so = d === soDot - 1 ? con : Math.round(dt / soDot / 1e6) * 1e6;
+        con -= so;
+        const daThu = level === "L8" ? so : (d === 0 ? so : (rnd() < .3 ? so : 0));
+        dots.push({ ngay: iso(dAdd(cur, d * 30)), soTien: so, daThu });
+      }
+      const mpos = rnd() < .18;
+      const t2 = rnd() < .3 ? pick(teamSales).id : null;
+      const O = {
+        id: "DH" + (++oi), khId: k.id, code: C.code, giaGoc: C.goc, uuDai: C.uudai, doanhThu: dt,
+        chietKhau: C.goc - dt, lechGia: lech !== 0, tuVan1: owner, tuVan2: t2, chia: t2 ? 50 : 100,
+        hinhThuc: mpos ? "MPOS" : pick(["Chuyển khoản", "Chuyển khoản", "Tiền mặt"]), mpos,
+        dots, createdAt: iso(cur), coso: k.coso, team: k.team,
+        trangThai: rnd() < .25 ? "choDuyet" : "daDuyet",
+        bills: rnd() < .85 ? ["bill-" + k.id + ".jpg"] : [],
+        hopDong: pickW([["Chưa gửi", 25], ["Đã gửi - chờ ký", 30], ["Nhận HĐ giấy", 45]]),
+        /* sau bán hàng */
+        xepLop: pickW([["Cần order giáo viên", 35], ["Đã xếp lớp", 65]]),
+        gv: null, lichHoc: "", ngayKG: null, cskh: null,
+        qua: { taiNghe: { tang: C.tainghe, diaChi: "", daGiao: rnd() < .6 ? 1 : 0 }, giaSu: C.gs, gvnn: 6, ontap: 6 }
+      };
+      if (O.xepLop === "Đã xếp lớp") {
+        O.gv = pick(GIAOVIEN);
+        O.lichHoc = pick(["T2 + T4 : 19h00–21h00", "T3 + T5 : 19h50–21h50", "T5 + T7 : 18h00–20h00", "Sáng T7 + CN : 9h–11h", "T2-T4-T6 : 20h–21h30"]);
+        O.ngayKG = iso(dAdd(new Date(O.createdAt), ri(3, 14)));
+        O.cskh = pick(usersBy("cskh")).id;
+      }
+      ORDERS.push(O); k.orders.push(O.id);
+      k.acts.push({ t: O.createdAt, type: "money", text: `Chốt đơn ${O.id} — ${C.code} · ${fmtVND(dt)} · ${soDot} đợt.`, by: owner });
+    }
+    if (level === "L9") { k.lyDoBo = pick(LYDO_BO); cur = dAdd(cur, ri(3, 20)); if (cur > TODAY) cur = dAdd(TODAY, -ri(1, 4)); k.acts.push({ t: iso(cur), type: "note", text: "Đóng hồ sơ — " + k.lyDoBo, by: owner }); }
+    /* thêm vài note */
+    for (let x = 0, m = ri(0, 3); x < m; x++) {
+      const t3 = dAdd(new Date(k.createdAt), ri(1, Math.max(2, daysOld)));
+      if (t3 <= TODAY) k.acts.push({ t: iso(t3), type: pickW([["call", 5], ["zalo", 4], ["note", 2]]), text: pick(NOTE_MAU), by: owner });
+    }
+    const tMax = iso(TODAY);
+    k.acts.forEach(a => { if (a.t > tMax) a.t = tMax; if (a.t < k.createdAt) a.t = k.createdAt; });
+    k.acts.sort((a, b) => a.t.localeCompare(b.t));
+    k.lastAct = k.acts[k.acts.length - 1].t;
+    if (OPEN_LV.includes(level)) {
+      const off = rnd() < .2 ? -ri(1, 12) : ri(0, 10);
+      k.next = {
+        date: iso(dAdd(TODAY, off)),
+        type: level === "L5" ? "test" : level === "L6" ? "meet" : pick(["call", "zalo"]),
+        note: level === "L1" ? "Data tồn — gọi khai thác lại" : level === "L2" ? "Gọi lần đầu, xác nhận nhu cầu"
+          : level === "L3" ? "Chốt lịch test đầu vào" : level === "L4" ? "Thuyết phục đặt lịch test"
+            : level === "L5" ? "Nhắc khách đi test đúng giờ" : "Gửi phiếu kết quả + chốt gói"
+      };
+    }
+    KH.push(k);
+  }
+  /* vài ca trùng SĐT để minh hoạ cảnh báo */
+  for (let x = 0; x < 8; x++) { const a = KH[ri(0, KH.length - 1)], b = KH[ri(0, KH.length - 1)]; if (a !== b) b.phone = a.phone; }
+  /* một ít khách trong Kho (nhân viên nghỉ việc) */
+  KH.filter(x => x.level === "L1" || x.level === "L2").slice(0, 120).forEach(x => { if (rnd() < .35) { x.kho = 1; x.owner = null; } });
+  return { KH, TESTS, ORDERS };
+}
+/* ============ Lõi ứng dụng ============ */
+const KEY = "ales_crm_v2";
+const store = {
+  load() { try { const r = localStorage.getItem(KEY); return r ? JSON.parse(r) : null; } catch (e) { return null; } },
+  save(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) { } },
+  wipe() { try { localStorage.removeItem(KEY); } catch (e) { } }
+};
+let DB = store.load() || seed(2200);
+let KH = DB.KH, TESTS = DB.TESTS, ORDERS = DB.ORDERS;
+const persist = () => store.save({ KH, TESTS, ORDERS });
+
+const S = {
+  view: "dash", me: "U1", q: "",
+  f: { level: "", source: "", owner: "", tep: "", cap: "", vua: "", when: "all", team: "" },
+  page: 1, per: 25, sel: new Set(), open: null, drTab: "info",
+  calM: TODAY.getMonth(), calY: TODAY.getFullYear(), repTab: "phieu"
+};
+const $ = s => document.querySelector(s);
+const el = (t, c, h) => { const e = document.createElement(t); if (c) e.className = c; if (h != null) e.innerHTML = h; return e; };
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(t._x); t._x = setTimeout(() => t.classList.remove("on"), 2400); }
+const me = () => userOf(S.me);
+const myRole = () => me().role;
+const isBoss = () => ["admin", "ketoan", "mkt", "hr", "daotao"].includes(myRole());
+const daysSince = s => Math.round((TODAY - new Date(s)) / 864e5);
+const khOf = id => KH.find(k => k.id === id);
+const testOf = id => TESTS.find(t => t.id === id);
+const orderOf = id => ORDERS.find(o => o.id === id);
+const initials = n => { const p = String(n).trim().split(/\s+/); return ((p[p.length - 2] || "")[0] || "") + (p[p.length - 1] || "")[0]; };
+const ACT = { call: "☎", zalo: "💬", meet: "🤝", test: "📝", note: "🗒", money: "💰", stage: "⇢", sys: "⚙" };
+
+/* ---- phạm vi xem theo vai trò ---- */
+function scope() {
+  const r = myRole(), u = me();
+  if (r === "sales") return KH.filter(k => k.owner === u.id);
+  if (r === "ql") return KH.filter(k => k.team === u.team);
+  if (r === "cskh") return KH.filter(k => k.orders.length);
+  return KH;
+}
+function myTests() {
+  const u = me();
+  if (myRole() === "tester") return TESTS.filter(t => t.testerId === u.id);
+  const ids = new Set(scope().map(k => k.id));
+  return TESTS.filter(t => ids.has(t.khId));
+}
+function myOrders() {
+  const ids = new Set(scope().map(k => k.id));
+  return ORDERS.filter(o => ids.has(o.khId));
+}
+
+/* ---- 72h thời gian vàng ---- */
+function golden(khId) {
+  const ts = TESTS.filter(t => t.khId === khId && t.status === "done").sort((a, b) => b.date.localeCompare(a.date));
+  if (!ts.length) return null;
+  const t = ts[0];
+  const end = new Date(t.date + "T" + (t.gio || "19:00") + ":00"); end.setHours(end.getHours() + 72);
+  const left = Math.round((end - TODAY) / 36e5);
+  return { test: t, left, alive: left > 0 };
+}
+
+/* ---- điều hướng theo vai trò ---- */
+const NAVDEF = [
+  { g: "Hằng ngày", items: [
+    { id: "dash", ico: "▦", name: "Tổng quan", roles: "*" },
+    { id: "today", ico: "✓", name: "Việc hôm nay", roles: "admin,sales,ql,ketoan,hr,daotao,cskh", badge: () => viecHomNay().length },
+    { id: "canhbao", ico: "⚠", name: "Cảnh báo", roles: "*", badge: () => alerts().length, warn: 1 }
+  ]},
+  { g: "Khách hàng", items: [
+    { id: "kh", ico: "☰", name: "Danh sách khách", roles: "*" },
+    { id: "pipe", ico: "▤", name: "Pipeline L1→L9", roles: "admin,sales,ql,mkt" },
+    { id: "kho", ico: "🗄", name: "Kho data", roles: "admin,ql,mkt,hr", badge: () => KH.filter(k => k.kho).length }
+  ]},
+  { g: "Test đầu vào", items: [
+    { id: "lichtest", ico: "▣", name: "Lịch test", roles: "*" },
+    { id: "cacuatoi", ico: "🎧", name: "Ca của tôi", roles: "tester,admin", badge: () => caCuaToi().filter(t => t.status === "booked" || !t.filledAt).length }
+  ]},
+  { g: "Kinh doanh", items: [
+    { id: "donhang", ico: "🧾", name: "Đơn hàng", roles: "admin,sales,ql,ketoan" },
+    { id: "duyet", ico: "✔", name: "Duyệt đơn", roles: "admin,ketoan", badge: () => ORDERS.filter(o => o.trangThai === "choDuyet").length },
+    { id: "congno", ico: "💰", name: "Công nợ", roles: "admin,ketoan,ql" },
+    { id: "xeplop", ico: "🎓", name: "Xếp lớp", roles: "admin,hr,daotao", badge: () => ORDERS.filter(o => o.xepLop !== "Đã xếp lớp").length },
+    { id: "cskh", ico: "🎁", name: "CSKH & quà tặng", roles: "admin,cskh,ql" }
+  ]},
+  { g: "Báo cáo", items: [
+    { id: "bc", ico: "◱", name: "Báo cáo & KPI", roles: "admin,ql,mkt,ketoan" },
+    { id: "nhatky", ico: "📓", name: "Nhật ký chăm sóc", roles: "admin,ql,sales" },
+    { id: "congtester", ico: "🧮", name: "Công tester", roles: "admin,tester,hr" }
+  ]}
+];
+function navFor(role) {
+  return NAVDEF.map(g => ({ g: g.g, items: g.items.filter(i => i.roles === "*" || i.roles.split(",").includes(role)) })).filter(g => g.items.length);
+}
+function drawNav() {
+  const n = $("#nav"); n.innerHTML = "";
+  navFor(myRole()).forEach(g => {
+    n.appendChild(el("div", "grp", g.g));
+    g.items.forEach(v => {
+      const b = el("button", S.view === v.id ? "on" : "");
+      let c = 0; try { c = v.badge ? v.badge() : 0; } catch (e) { c = 0; }
+      b.innerHTML = `<span class="ico">${v.ico}</span><span>${v.name}</span>` + (c ? `<span class="cnt${v.warn ? " warn" : ""}">${c}</span>` : "");
+      b.onclick = () => { S.view = v.id; S.page = 1; render(); scrollTo(0, 0); };
+      n.appendChild(b);
+    });
+  });
+}
+function drawUser() {
+  const s = $("#userSel"); s.innerHTML = "";
+  const byRole = {};
+  USERS.forEach(u => { (byRole[u.role] = byRole[u.role] || []).push(u); });
+  ROLES.forEach(r => {
+    if (!byRole[r.id]) return;
+    const og = document.createElement("optgroup"); og.label = r.name;
+    byRole[r.id].forEach(u => og.appendChild(new Option(u.name + (u.team ? " · " + teamOf(u.team).name : ""), u.id)));
+    s.appendChild(og);
+  });
+  s.value = S.me;
+  s.onchange = () => {
+    S.me = s.value; S.sel.clear(); S.page = 1;
+    const av = navFor(myRole()).flatMap(g => g.items).map(i => i.id);
+    if (!av.includes(S.view)) S.view = av[0];
+    render();
+  };
+}
+
+/* ---- việc hôm nay & cảnh báo ---- */
+function viecHomNay() {
+  const r = myRole();
+  if (r === "tester") return caCuaToi().filter(t => t.date <= iso(TODAY) && !t.filledAt && t.status !== "cancel" && t.status !== "absent");
+  if (r === "ketoan") return ORDERS.filter(o => o.trangThai === "choDuyet");
+  if (r === "hr" || r === "daotao") return ORDERS.filter(o => o.xepLop !== "Đã xếp lớp");
+  if (r === "cskh") return ORDERS.filter(o => o.xepLop === "Đã xếp lớp" && !o.qua.taiNghe.daGiao);
+  return scope().filter(k => k.next && k.next.date <= iso(TODAY) && OPEN_LV.includes(k.level))
+    .sort((a, b) => a.next.date.localeCompare(b.next.date));
+}
+function caCuaToi() { const u = me(); return TESTS.filter(t => t.testerId === u.id).sort((a, b) => (a.date + a.gio).localeCompare(b.date + b.gio)); }
+const quaHan = k => k.next ? Math.round((TODAY - new Date(k.next.date)) / 864e5) : 0;
+
+function alerts() {
+  const r = myRole(), out = [];
+  const add = (sev, ico, text, act) => out.push({ sev, ico, text, act });
+  if (["sales", "ql", "admin"].includes(r)) {
+    const late = scope().filter(k => OPEN_LV.includes(k.level) && quaHan(k) > 0);
+    if (late.length) add("dg", "☎", `${late.length} khách quá hạn chăm sóc`, () => { S.view = "today"; render(); });
+    const g = scope().filter(k => { const x = golden(k.id); return x && x.alive && x.left <= 24 && k.level !== "L8"; });
+    if (g.length) add("wn", "⏳", `${g.length} khách sắp hết 72h thời gian vàng (còn dưới 24 giờ)`, () => { S.view = "today"; render(); });
+    const t = myTests().filter(x => x.status === "booked" && x.date === iso(TODAY));
+    if (t.length) add("info", "▣", `${t.length} ca test hôm nay cần nhắc khách`, () => { S.view = "lichtest"; render(); });
+  }
+  if (["ketoan", "admin"].includes(r)) {
+    const cd = ORDERS.filter(o => o.trangThai === "choDuyet");
+    if (cd.length) add("wn", "✔", `${cd.length} đơn chờ kế toán duyệt`, () => { S.view = "duyet"; render(); });
+    const nb = ORDERS.filter(o => !o.bills.length);
+    if (nb.length) add("dg", "🧾", `${nb.length} đơn chưa có ảnh bill chuyển khoản`, () => { S.view = "duyet"; render(); });
+    const hd = ORDERS.filter(o => o.hopDong === "Chưa gửi");
+    if (hd.length) add("wn", "📄", `${hd.length} đơn chưa gửi hợp đồng`, () => { S.view = "donhang"; render(); });
+    const dueDots = ORDERS.flatMap(o => o.dots.filter(d => !d.daThu && d.ngay <= iso(dAdd(TODAY, 3))));
+    if (dueDots.length) add("dg", "💰", `${dueDots.length} đợt học phí đến hạn hoặc quá hạn`, () => { S.view = "congno"; render(); });
+  }
+  if (["hr", "daotao", "admin"].includes(r)) {
+    const q = ORDERS.filter(o => o.xepLop !== "Đã xếp lớp");
+    const tre = q.filter(o => daysSince(o.createdAt) > 7);
+    if (tre.length) add("dg", "🎓", `${tre.length} ca xếp lớp đã quá 7 ngày`, () => { S.view = "xeplop"; render(); });
+    else if (q.length) add("wn", "🎓", `${q.length} ca đang chờ xếp lớp`, () => { S.view = "xeplop"; render(); });
+    const kg = ORDERS.filter(o => o.ngayKG && o.ngayKG >= iso(TODAY) && o.ngayKG <= iso(dAdd(TODAY, 7)));
+    if (kg.length) add("info", "🔔", `${kg.length} lớp khai giảng trong 7 ngày tới`, () => { S.view = "xeplop"; render(); });
+  }
+  if (["cskh", "admin"].includes(r)) {
+    const tn = ORDERS.filter(o => o.xepLop === "Đã xếp lớp" && !o.qua.taiNghe.daGiao);
+    if (tn.length) add("wn", "🎁", `${tn.length} học viên chưa nhận tai nghe`, () => { S.view = "cskh"; render(); });
+  }
+  if (r === "tester") {
+    const chua = caCuaToi().filter(t => t.date <= iso(TODAY) && t.status !== "cancel" && t.status !== "absent" && !t.filledAt);
+    if (chua.length) add("dg", "📝", `${chua.length} ca test chưa nhập kết quả — ca điền thiếu sẽ không được tính công`, () => { S.view = "cacuatoi"; render(); });
+    const hn = caCuaToi().filter(t => t.date === iso(TODAY));
+    if (hn.length) add("info", "🎧", `${hn.length} ca test của bạn hôm nay`, () => { S.view = "cacuatoi"; render(); });
+  }
+  if (["mkt", "admin"].includes(r)) {
+    const chuaPB = KH.filter(k => !k.owner && !k.kho);
+    if (chuaPB.length) add("wn", "👥", `${chuaPB.length} data chưa phân bổ cho sale`, () => { S.view = "kh"; S.f.owner = "none"; render(); });
+  }
+  return out;
+}
+
+/* ---- hiển thị ---- */
+function avatar(u, size) { const s = size || 26; return `<span class="avatar" style="background:${u.color};width:${s}px;height:${s}px;font-size:${(s * .42).toFixed(0)}px">${esc(initials(u.name))}</span>`; }
+function lvChip(id) { const l = lvOf(id); return `<span class="chip"><span class="dot" style="background:${l.color}"></span>${l.id} ${l.name}</span>`; }
+function ownerCell(k) {
+  if (!k.owner) return `<span class="chip dg">${k.kho ? "Trong kho" : "Chưa phân bổ"}</span>`;
+  const u = userOf(k.owner);
+  return `<div class="row" style="gap:7px;flex-wrap:nowrap">${avatar(u, 24)}<span class="name-cell">${esc(u.name)}</span></div>`;
+}
+const tenHV = k => k.hoTenHV + (k.lop ? ` · ${k.lop}` : "");
+
+/* ---- biểu đồ ---- */
+const TIP = () => $("#tip");
+function bindTip(node, html) {
+  node.addEventListener("mousemove", e => { const t = TIP(); t.innerHTML = html; t.classList.add("on"); t.style.left = Math.min(e.clientX + 14, innerWidth - 300) + "px"; t.style.top = (e.clientY - 10) + "px"; });
+  node.addEventListener("mouseleave", () => TIP().classList.remove("on"));
+}
+function colChart(data, o) {
+  o = o || {}; const max = Math.max(1, ...data.map(d => d.v));
+  const w = el("div"); const plot = el("div", "cc-plot");
+  data.forEach(d => {
+    const col = el("div", "cc-col");
+    if (o.labelTop) col.appendChild(el("div", "cc-lab", esc(o.fmtShort ? o.fmtShort(d.v) : d.v)));
+    const bar = el("div", "cc-bar"); bar.style.height = Math.max(.8, d.v / max * 100 * (o.labelTop ? .88 : 1)) + "%";
+    if (d.color) bar.style.background = d.color;
+    col.appendChild(bar); bindTip(col, `<b>${esc(d.full || d.label)}</b><br>${esc(d.tip || d.v)}`); plot.appendChild(col);
+  });
+  const xs = el("div", "cc-x"); data.forEach(d => xs.appendChild(el("span", null, esc(d.label))));
+  w.appendChild(plot); w.appendChild(xs); return w;
+}
+function barList(rows, o) {
+  o = o || {}; const max = Math.max(1, ...rows.map(r => r.v)); const box = el("div");
+  rows.forEach(r => {
+    const row = el("div", "bar-row");
+    row.innerHTML = `<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(r.label)}">${esc(r.label)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(r.v / max * 100).toFixed(1)}%;background:${r.color || "var(--b450)"}"></div></div>
+      <div class="tnum" style="text-align:right;font-weight:600">${o.fmt ? o.fmt(r.v) : r.v}</div>`;
+    if (r.tip) bindTip(row, r.tip);
+    box.appendChild(row);
+  });
+  return box;
+}
+function pctBar(v, target) {
+  const p = target ? Math.min(100, v / target * 100) : 0;
+  const c = p >= 100 ? "var(--good)" : p >= 60 ? "var(--b450)" : "var(--warning)";
+  return `<div class="prog"><i style="width:${p.toFixed(0)}%;background:${c}"></i></div><div class="sub tnum">${p.toFixed(0)}% của ${fmtM(target)}</div>`;
+}
+
+/* ---- kỳ & tháng ---- */
+const kyOf = d => { const day = new Date(d).getDate(); return day <= 10 ? 1 : day <= 20 ? 2 : 3; };
+const inMonth = (s, y, m) => { if (!s) return false; const d = new Date(s); return d.getFullYear() === y && d.getMonth() === m; };
+function monthsBack(n) { const a = []; for (let i = n - 1; i >= 0; i--) { const d = new Date(TODAY.getFullYear(), TODAY.getMonth() - i, 1); a.push({ y: d.getFullYear(), m: d.getMonth(), label: "T" + (d.getMonth() + 1) }); } return a; }
+
+/* ---- 21 chỉ số phễu ---- */
+function chiSo(list, from, to) {
+  const inR = s => s && (!from || s >= from) && (!to || s <= to);
+  const dataMoi = list.filter(k => inR(k.createdAt));
+  const ids = new Set(list.map(k => k.id));
+  const ts = TESTS.filter(t => ids.has(t.khId));
+  const os = ORDERS.filter(o => ids.has(o.khId));
+  const datLich = ts.filter(t => inR(t.date));
+  const den = datLich.filter(t => t.status === "done");
+  const dk = os.filter(o => inR(o.createdAt));
+  const dkTrongThang = dk.filter(o => { const k = khOf(o.khId); return k && inR(k.createdAt); });
+  const dt = dk.reduce((s, o) => s + o.doanhThu, 0);
+  const dtHoanPhi = dk.reduce((s, o) => s + o.dots.slice(1).filter(d => d.daThu).reduce((a, b) => a + b.soTien, 0), 0);
+  const dtGT = dk.filter(o => (khOf(o.khId) || {}).source === "gioithieu").reduce((s, o) => s + o.doanhThu, 0);
+  return {
+    dataMoi: dataMoi.length,
+    dungTep: dataMoi.filter(k => capOf(k.cap).dungTep).length,
+    dungTinhVua: dataMoi.filter(k => laTinhVua(k.tinh)).length,
+    datLich: datLich.length, den: den.length,
+    dangKy: dk.length, dangKyTrongThang: dkTrongThang.length,
+    doanhThu: dt, hoanPhi: dtHoanPhi, gioiThieu: dtGT,
+    r_tep: dataMoi.length ? dataMoi.filter(k => capOf(k.cap).dungTep).length / dataMoi.length : 0,
+    r_vua: dataMoi.length ? dataMoi.filter(k => laTinhVua(k.tinh)).length / dataMoi.length : 0,
+    r_datlich: dataMoi.length ? datLich.length / dataMoi.length : 0,
+    r_den: datLich.length ? den.length / datLich.length : 0,
+    r_dk: den.length ? dk.length / den.length : 0,
+    tlcd: dataMoi.length ? dk.length / dataMoi.length : 0
+  };
+}
+const pct = v => (v * 100).toFixed(1) + "%";
+function cmpChuan(v, chuan) {
+  if (!chuan) return "";
+  return v >= chuan ? `<span class="chip ok">đạt chuẩn ${pct(chuan)}</span>` : `<span class="chip dg">dưới chuẩn ${pct(chuan)}</span>`;
+}
+/* ============ Màn hình phần 1 ============ */
+const TITLES = {
+  dash: "Tổng quan", today: "Việc hôm nay", canhbao: "Cảnh báo", kh: "Danh sách khách hàng",
+  pipe: "Pipeline L1 → L9", kho: "Kho data", lichtest: "Lịch test đầu vào", cacuatoi: "Ca test của tôi",
+  donhang: "Đơn hàng", duyet: "Duyệt đơn", congno: "Công nợ học phí", xeplop: "Hàng đợi xếp lớp",
+  cskh: "CSKH & quà tặng", bc: "Báo cáo & KPI", nhatky: "Nhật ký chăm sóc", congtester: "Công tester"
+};
+function render() {
+  drawNav();
+  const v = $("#view"); v.innerHTML = "";
+  $("#page-title").textContent = TITLES[S.view] || "";
+  const fn = ({
+    dash: viewDash, today: viewToday, canhbao: viewCanhBao, kh: viewKH, pipe: viewPipe, kho: viewKho,
+    lichtest: viewLichTest, cacuatoi: viewCaCuaToi, donhang: viewDonHang, duyet: viewDuyet,
+    congno: viewCongNo, xeplop: viewXepLop, cskh: viewCSKH, bc: viewBC, nhatky: viewNhatKy, congtester: viewCongTester
+  })[S.view];
+  (fn || viewDash)(v);
+  persist();
+}
+
+/* ---------- TỔNG QUAN ---------- */
+function viewDash(v) {
+  const r = myRole();
+  const list = scope(), os = myOrders();
+  const y = TODAY.getFullYear(), m = TODAY.getMonth();
+  const thisM = os.filter(o => inMonth(o.createdAt, y, m));
+  const lastMD = new Date(y, m - 1, 1);
+  const lastM = os.filter(o => inMonth(o.createdAt, lastMD.getFullYear(), lastMD.getMonth()));
+  const rev = thisM.reduce((s, o) => s + o.doanhThu, 0), revL = lastM.reduce((s, o) => s + o.doanhThu, 0);
+  const delta = revL ? (rev - revL) / revL * 100 : 0;
+  const target = r === "sales" ? (me().target || 0) : r === "ql" ? teamOf(me().team).target : TEAMS.reduce((s, t) => s + t.target, 0);
+  const cs = chiSo(list, iso(new Date(y, m, 1)), iso(TODAY));
+
+  const tiles = el("div", "tiles");
+  tiles.innerHTML = `
+    <div class="tile"><div class="lab">Doanh thu tháng ${m + 1}</div><div class="val">${fmtM(rev)}</div>
+      <div class="sub"><span class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "▲" : "▼"} ${Math.abs(delta).toFixed(1)}%</span> so tháng trước</div></div>
+    <div class="tile"><div class="lab">Đạt chỉ tiêu</div><div class="val">${target ? (rev / target * 100).toFixed(0) : 0}%</div>
+      <div class="sub">Mục tiêu ${fmtM(target)}</div></div>
+    <div class="tile"><div class="lab">Data mới tháng này</div><div class="val">${cs.dataMoi}</div>
+      <div class="sub">${cs.dungTep} đúng tệp · ${cs.dungTinhVua} tỉnh Vua</div></div>
+    <div class="tile"><div class="lab">Tỉ lệ chuyển đổi</div><div class="val">${pct(cs.tlcd)}</div>
+      <div class="sub">${cs.dangKy} chốt / ${cs.dataMoi} data · aim ${pct(TLCD.ca_nhan_aim)}</div></div>
+    <div class="tile"><div class="lab">Ca test tháng này</div><div class="val">${cs.datLich}</div>
+      <div class="sub">${cs.den} khách đã đến (${pct(cs.r_den)})</div></div>`;
+  v.appendChild(tiles);
+
+  const al = alerts();
+  if (al.length) {
+    al.slice(0, 3).forEach(a => {
+      const w = el("div", "warnbar " + (a.sev === "dg" ? "dg" : a.sev === "info" ? "info" : ""));
+      w.innerHTML = `<span>${a.ico}</span><span>${esc(a.text)}</span>`;
+      w.appendChild(el("span", "grow"));
+      const b = el("button", "btn sm", "Xử lý"); b.onclick = a.act; w.appendChild(b);
+      v.appendChild(w);
+    });
+    if (al.length > 3) { const b = el("button", "btn sm", `Xem tất cả ${al.length} cảnh báo`); b.onclick = () => { S.view = "canhbao"; render(); }; v.appendChild(b); }
+  }
+
+  const g = el("div", "grid3");
+  const c1 = el("div", "card");
+  c1.innerHTML = `<div class="card-h"><div><h3>Doanh thu 6 tháng</h3><div class="sub">Theo ngày chốt đơn</div></div></div>`;
+  const b1 = el("div", "card-b");
+  b1.appendChild(colChart(monthsBack(6).map(x => {
+    const w = os.filter(o => inMonth(o.createdAt, x.y, x.m));
+    const val = w.reduce((s, o) => s + o.doanhThu, 0);
+    return { label: x.label, v: val, full: `Tháng ${x.m + 1}/${x.y}`, tip: `${fmtVND(val)} · ${w.length} học viên` };
+  }), { labelTop: true, fmtShort: fmtM }));
+  c1.appendChild(b1); g.appendChild(c1);
+
+  const c2 = el("div", "card");
+  c2.innerHTML = `<div class="card-h"><div><h3>Phễu L1 → L8</h3><div class="sub">Toàn bộ khách trong phạm vi của bạn</div></div></div>`;
+  const b2 = el("div", "card-b");
+  const order = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"];
+  const ramp = ["var(--b250)", "var(--b250)", "var(--b350)", "var(--b350)", "var(--b450)", "var(--b550)", "var(--b650)", "var(--good)"];
+  const base = list.length || 1;
+  b2.appendChild(barList(order.map((id, i) => {
+    const n = list.filter(k => order.indexOf(k.level) >= i && k.level !== "L9").length;
+    return { label: `${id} ${lvOf(id).name}`, v: n, color: ramp[i], tip: `<b>${id} ${lvOf(id).name}</b><br>${n} khách · ${(n / base * 100).toFixed(1)}% tổng data` };
+  }), { fmt: x => x }));
+  c2.appendChild(b2); g.appendChild(c2);
+  v.appendChild(g);
+
+  const g2 = el("div", "grid2");
+  const c3 = el("div", "card");
+  c3.innerHTML = `<div class="card-h"><div><h3>Tỉ lệ so chuẩn</h3><div class="sub">Chuẩn cố định cả năm của ALES</div></div></div>`;
+  const b3 = el("div", "card-b");
+  [["Đặt lịch / Data", cs.r_datlich, CHUAN.datlich_data], ["Đến / Đặt lịch", cs.r_den, CHUAN.den_datlich], ["Đăng ký / Đến", cs.r_dk, CHUAN.dangky_den]]
+    .forEach(([lab, val, ch]) => {
+      const row = el("div"); row.style.padding = "7px 0";
+      row.innerHTML = `<div class="row" style="justify-content:space-between"><b>${lab}</b><span>${pct(val)} ${cmpChuan(val, ch)}</span></div>
+        <div class="prog" style="margin-top:5px"><i style="width:${Math.min(100, val / (ch * 1.6) * 100).toFixed(0)}%;background:${val >= ch ? "var(--good)" : "var(--warning)"}"></i></div>`;
+      b3.appendChild(row);
+    });
+  c3.appendChild(b3); g2.appendChild(c3);
+
+  const c4 = el("div", "card");
+  const tt = viecHomNay();
+  c4.innerHTML = `<div class="card-h"><div><h3>Cần làm hôm nay</h3><div class="sub">${tt.length} việc</div></div></div>`;
+  const b4 = el("div"); b4.style.padding = "2px 14px 12px";
+  if (!tt.length) b4.appendChild(el("div", "empty", "Không còn việc tồn 🎉"));
+  tt.slice(0, 6).forEach(x => b4.appendChild(rowViec(x)));
+  if (tt.length > 6) { const b = el("button", "btn sm", `Xem tất cả ${tt.length}`); b.style.marginTop = "8px"; b.onclick = () => { S.view = "today"; render(); }; b4.appendChild(b); }
+  c4.appendChild(b4); g2.appendChild(c4);
+  v.appendChild(g2);
+}
+
+function rowViec(x) {
+  const r = el("div", "row");
+  r.style.cssText = "padding:9px 0;border-bottom:1px solid var(--grid);flex-wrap:nowrap;gap:10px;cursor:pointer";
+  if (x.next) { // khách hàng
+    const od = quaHan(x), g = golden(x.id);
+    r.innerHTML = `<span style="width:22px;font-size:15px">${ACT[x.next.type] || "•"}</span>
+      <div style="min-width:0;flex:1"><div class="name-cell">${esc(tenHV(x))} <span class="muted" style="font-weight:400">· ${esc(x.phone)}</span></div>
+      <div class="sub-cell">${esc(x.next.note)} · ${lvOf(x.level).id} ${lvOf(x.level).name}</div></div>
+      ${g && g.alive ? `<span class="chip wn count72">⏳ còn ${g.left}h</span>` : ""}
+      <span class="chip ${od > 0 ? "dg" : ""}">${od > 0 ? "Trễ " + od + " ngày" : fmtD(x.next.date)}</span>`;
+    r.onclick = () => openKH(x.id);
+  } else if (x.dots) { // đơn hàng
+    const k = khOf(x.khId) || {};
+    r.innerHTML = `<span style="width:22px;font-size:15px">🧾</span>
+      <div style="min-width:0;flex:1"><div class="name-cell">${esc(k.hoTenHV || "")} · ${x.id}</div>
+      <div class="sub-cell">${x.code} · ${fmtVND(x.doanhThu)} · ${x.trangThai === "choDuyet" ? "chờ duyệt" : x.xepLop}</div></div>
+      <span class="chip">${fmtD(x.createdAt)}</span>`;
+    r.onclick = () => openKH(x.khId, "deal");
+  } else { // ca test
+    const k = khOf(x.khId) || {};
+    r.innerHTML = `<span style="width:22px;font-size:15px">🎧</span>
+      <div style="min-width:0;flex:1"><div class="name-cell">${esc(k.hoTenHV || "")} · ${x.gio}</div>
+      <div class="sub-cell">${progOf(x.prog).name} · ${fmtD(x.date)}</div></div>
+      <span class="chip ${x.filledAt ? "ok" : "dg"}">${x.filledAt ? "đã nhập" : "chưa nhập kết quả"}</span>`;
+    r.onclick = () => openTest(x.id);
+  }
+  return r;
+}
+
+/* ---------- VIỆC HÔM NAY ---------- */
+function viewToday(v) {
+  const r = myRole();
+  if (["ketoan", "hr", "daotao", "cskh"].includes(r)) {
+    const list = viecHomNay();
+    const c = el("div", "card");
+    c.innerHTML = `<div class="card-h"><div><h3>Việc của ${roleOf(r).name}</h3><div class="sub">${list.length} việc</div></div></div>`;
+    const b = el("div"); b.style.padding = "2px 14px 12px";
+    if (!list.length) b.appendChild(el("div", "empty", "Không còn việc tồn 🎉"));
+    list.forEach(x => b.appendChild(rowViec(x)));
+    c.appendChild(b); v.appendChild(c); return;
+  }
+  const tt = viecHomNay();
+  const late = tt.filter(k => quaHan(k) > 0), now = tt.filter(k => quaHan(k) === 0);
+  const soon = scope().filter(k => k.next && k.next.date > iso(TODAY) && k.next.date <= iso(dAdd(TODAY, 7)) && OPEN_LV.includes(k.level))
+    .sort((a, b) => a.next.date.localeCompare(b.next.date));
+  const gold = scope().filter(k => { const g = golden(k.id); return g && g.alive && k.level !== "L8"; })
+    .sort((a, b) => golden(a.id).left - golden(b.id).left);
+
+  const tiles = el("div", "tiles");
+  tiles.innerHTML = `
+    <div class="tile"><div class="lab">Quá hạn</div><div class="val" style="color:var(--critical)">${late.length}</div><div class="sub">Gọi gấp</div></div>
+    <div class="tile"><div class="lab">Đến hạn hôm nay</div><div class="val">${now.length}</div><div class="sub">${fmtD(iso(TODAY))}</div></div>
+    <div class="tile"><div class="lab">7 ngày tới</div><div class="val">${soon.length}</div><div class="sub">Đã lên lịch</div></div>
+    <div class="tile"><div class="lab">Trong 72h vàng</div><div class="val" style="color:var(--s2)">${gold.length}</div><div class="sub">Còn quà tặng — chốt ngay</div></div>`;
+  v.appendChild(tiles);
+
+  const mk = (title, arr, sub, cls) => {
+    const c = el("div", "card");
+    c.innerHTML = `<div class="card-h"><div><h3>${title}</h3><div class="sub">${sub}</div></div></div>`;
+    const b = el("div"); b.style.padding = "2px 14px 12px";
+    if (!arr.length) b.appendChild(el("div", "empty", "Không có việc nào."));
+    arr.forEach(k => {
+      const row = rowViec(k);
+      const act = el("div", "row"); act.style.flexWrap = "nowrap";
+      const b1 = el("button", "btn sm", "Ghi kết quả"); b1.onclick = e => { e.stopPropagation(); openKH(k.id, "log"); };
+      const b2 = el("button", "btn sm", "+1 ngày"); b2.onclick = e => {
+        e.stopPropagation(); k.next.date = iso(dAdd(new Date(k.next.date) < TODAY ? TODAY : new Date(k.next.date), 1));
+        toast("Dời lịch sang " + fmtD(k.next.date)); render();
+      };
+      act.appendChild(b1); act.appendChild(b2); row.appendChild(act);
+      b.appendChild(row);
+    });
+    c.appendChild(b); return c;
+  };
+  if (gold.length) v.appendChild(mk("⏳ Trong 72 giờ vàng — ưu tiên tuyệt đối", gold, "Hết 72h là mất quà tặng, tỉ lệ chốt tụt hẳn"));
+  v.appendChild(mk("🔴 Quá hạn chăm sóc", late, "Càng để lâu tỉ lệ chốt càng giảm"));
+  v.appendChild(mk("Đến hạn hôm nay", now, fmtD(iso(TODAY))));
+  v.appendChild(mk("Sắp tới (7 ngày)", soon, "Chuẩn bị trước nội dung tư vấn"));
+}
+
+/* ---------- CẢNH BÁO ---------- */
+function viewCanhBao(v) {
+  const al = alerts();
+  const c = el("div", "card");
+  c.innerHTML = `<div class="card-h"><div><h3>Cảnh báo dành cho ${esc(roleOf(myRole()).name)}</h3><div class="sub">${al.length} việc cần chú ý · hệ thống tự rà mỗi lần mở</div></div></div>`;
+  const b = el("div", "card-b"); b.style.display = "flex"; b.style.flexDirection = "column"; b.style.gap = "8px";
+  if (!al.length) b.appendChild(el("div", "empty", "Không có cảnh báo nào 🎉"));
+  al.forEach(a => {
+    const w = el("div", "warnbar " + (a.sev === "dg" ? "dg" : a.sev === "info" ? "info" : ""));
+    w.innerHTML = `<span style="font-size:16px">${a.ico}</span><span>${esc(a.text)}</span>`;
+    w.appendChild(el("span", "grow"));
+    const btn = el("button", "btn sm", "Mở"); btn.onclick = a.act; w.appendChild(btn);
+    b.appendChild(w);
+  });
+  c.appendChild(b); v.appendChild(c);
+
+  const c2 = el("div", "card");
+  c2.innerHTML = `<div class="card-h"><h3>Cảnh báo hệ thống theo dõi</h3></div>`;
+  const b2 = el("div", "card-b");
+  b2.innerHTML = `<div class="sub" style="line-height:1.9">
+    • Lịch hẹn gọi &amp; khách quá hạn chăm sóc &nbsp;•&nbsp; Khách sắp hết 72h thời gian vàng<br>
+    • Ca test hôm nay chưa nhắc khách &nbsp;•&nbsp; Ca test đã diễn ra mà tester chưa nhập kết quả<br>
+    • Đơn chờ kế toán duyệt &nbsp;•&nbsp; Đơn thiếu ảnh bill &nbsp;•&nbsp; Hợp đồng chưa gửi<br>
+    • Đợt học phí đến hạn / quá hạn &nbsp;•&nbsp; Ca xếp lớp quá 7 ngày (KPI của HR)<br>
+    • Lớp khai giảng trong 7 ngày tới &nbsp;•&nbsp; Học viên chưa nhận tai nghe &nbsp;•&nbsp; Data chưa phân bổ</div>`;
+  c2.appendChild(b2); v.appendChild(c2);
+}
+
+/* ---------- DANH SÁCH KHÁCH ---------- */
+function filtered() {
+  let a = scope().filter(k => !k.kho);
+  const q = S.q.trim().toLowerCase();
+  if (q) a = a.filter(k => (k.hoTenHV + " " + k.hoTenPH + " " + k.phone + " " + k.id + " " + k.email).toLowerCase().includes(q));
+  const f = S.f;
+  if (f.level) a = a.filter(k => f.level === "open" ? OPEN_LV.includes(k.level) : k.level === f.level);
+  if (f.source) a = a.filter(k => k.source === f.source);
+  if (f.tep) a = a.filter(k => k.tep === f.tep);
+  if (f.cap) a = a.filter(k => k.cap === f.cap);
+  if (f.vua) a = a.filter(k => f.vua === "1" ? laTinhVua(k.tinh) : !laTinhVua(k.tinh));
+  if (f.team) a = a.filter(k => k.team === f.team);
+  if (f.owner) a = a.filter(k => f.owner === "none" ? !k.owner : k.owner === f.owner);
+  if (f.when !== "all") a = a.filter(k => daysSince(k.createdAt) <= +f.when);
+  return a.sort((x, y) => y.createdAt.localeCompare(x.createdAt));
+}
+function dupPhones() { const m = {}; KH.forEach(k => m[k.phone] = (m[k.phone] || 0) + 1); return new Set(Object.keys(m).filter(p => m[p] > 1)); }
+
+function viewKH(v) {
+  const dups = dupPhones();
+  const bar = el("div", "card"); const bb = el("div", "card-b row");
+  const sel = (label, val, opts, on) => {
+    const w = el("label", "row"); w.style.gap = "6px"; w.innerHTML = `<span class="sub">${label}</span>`;
+    const s = el("select"); opts.forEach(o => s.appendChild(new Option(o[1], o[0]))); s.value = val;
+    s.onchange = () => { on(s.value); S.page = 1; render(); }; w.appendChild(s); return w;
+  };
+  bb.appendChild(sel("Trạng thái", S.f.level, [["", "Tất cả"], ["open", "— Đang theo đuổi —"]].concat(LEVELS.map(l => [l.id, l.id + " " + l.name])), x => S.f.level = x));
+  bb.appendChild(sel("Cấp học", S.f.cap, [["", "Tất cả"]].concat(CAPHOC.map(c => [c.id, c.name])), x => S.f.cap = x));
+  bb.appendChild(sel("Tỉnh", S.f.vua, [["", "Tất cả"], ["1", "★ Tỉnh Vua"], ["0", "Tỉnh khác"]], x => S.f.vua = x));
+  bb.appendChild(sel("Tệp QC", S.f.tep, [["", "Tất cả"]].concat(TEP.map(t => [t.id, t.name])), x => S.f.tep = x));
+  bb.appendChild(sel("Nguồn", S.f.source, [["", "Tất cả"]].concat(SOURCES.map(s => [s.id, s.name])), x => S.f.source = x));
+  if (isBoss() || myRole() === "ql") bb.appendChild(sel("Sales", S.f.owner, [["", "Tất cả"], ["none", "⚠ Chưa phân bổ"]].concat(SALES.map(s => [s.id, s.name])), x => S.f.owner = x));
+  if (isBoss()) bb.appendChild(sel("Team", S.f.team, [["", "Tất cả"]].concat(TEAMS.map(t => [t.id, t.name])), x => S.f.team = x));
+  bb.appendChild(sel("Thời gian", S.f.when, [["all", "Toàn bộ"], ["7", "7 ngày"], ["30", "30 ngày"], ["90", "90 ngày"]], x => S.f.when = x));
+  const rs = el("button", "btn sm", "Xóa lọc"); rs.onclick = () => { S.f = { level: "", source: "", owner: "", tep: "", cap: "", vua: "", when: "all", team: "" }; S.q = ""; $("#q").value = ""; render(); };
+  bb.appendChild(rs); bb.appendChild(el("div", "grow"));
+  const add = el("button", "btn pri sm", "+ Thêm khách"); add.onclick = newKH;
+  const exp = el("button", "btn sm", "⇩ Xuất CSV"); exp.onclick = () => exportCSV(filtered());
+  bb.appendChild(exp); bb.appendChild(add);
+  bar.appendChild(bb); v.appendChild(bar);
+
+  const list = filtered();
+  if (S.sel.size) {
+    const ab = el("div", "warnbar info");
+    ab.innerHTML = `<span>Đã chọn <b>${S.sel.size}</b> khách</span>`;
+    const s2 = el("select"); s2.appendChild(new Option("— Phân bổ cho sale —", ""));
+    SALES.forEach(u => s2.appendChild(new Option(u.name + " · " + teamOf(u.team).name, u.id)));
+    s2.onchange = () => {
+      if (!s2.value) return; let n = 0;
+      S.sel.forEach(id => { const k = khOf(id); if (k) { k.owner = s2.value; k.team = userOf(s2.value).team; k.coso = userOf(s2.value).coso; k.kho = 0; k.acts.push({ t: iso(TODAY), type: "sys", text: "Phân bổ cho " + userOf(s2.value).name, by: S.me }); n++; } });
+      S.sel.clear(); toast(`Đã phân bổ ${n} khách`); render();
+    };
+    ab.appendChild(el("div", "grow")); ab.appendChild(s2);
+    const cl = el("button", "btn sm", "Bỏ chọn"); cl.onclick = () => { S.sel.clear(); render(); }; ab.appendChild(cl);
+    v.appendChild(ab);
+  }
+
+  const card = el("div", "card");
+  card.innerHTML = `<div class="card-h"><h3>${list.length} khách hàng</h3><div class="sub">${isBoss() ? "Toàn trung tâm" : myRole() === "ql" ? teamOf(me().team).name : "Của " + me().name}</div></div>`;
+  const wrap = el("div", "tbl-wrap"); const t = el("table");
+  t.innerHTML = `<thead><tr><th style="width:30px"><input type="checkbox" id="ckAll"></th>
+    <th>Học viên</th><th>Liên hệ</th><th>Tỉnh</th><th>Cấp / Lớp</th><th>Page · Tệp</th><th>Trạng thái</th><th>Test</th><th>Sales</th><th>Chăm sóc</th><th>Việc tiếp theo</th><th style="text-align:right">Giá trị</th></tr></thead>`;
+  const tb = el("tbody"); const st = (S.page - 1) * S.per;
+  list.slice(st, st + S.per).forEach(k => {
+    const tr = el("tr", S.sel.has(k.id) ? "sel" : "");
+    const T = k.tests.map(testOf).filter(Boolean).sort((a, b) => b.date.localeCompare(a.date))[0];
+    const O = k.orders.map(orderOf).filter(Boolean)[0];
+    const od = quaHan(k), g = golden(k.id);
+    tr.innerHTML = `<td><input type="checkbox" ${S.sel.has(k.id) ? "checked" : ""}></td>
+      <td><div class="name-cell">${esc(k.hoTenHV)}</div><div class="sub-cell">${k.hoTenPH ? "PH: " + esc(k.hoTenPH) : esc(k.mucTieu)}</div></td>
+      <td><div class="tnum">${esc(k.phone)} ${dups.has(k.phone) ? '<span title="Trùng SĐT" style="color:var(--warning)">⚠</span>' : ""}</div><div class="sub-cell">${esc(k.email || "—")}</div></td>
+      <td>${laTinhVua(k.tinh) ? "★ " : ""}${esc(k.tinh)}</td>
+      <td>${esc(capOf(k.cap).name)}${capOf(k.cap).dungTep ? ' <span class="chip ok" style="padding:0 5px">đúng tệp</span>' : ""}<div class="sub-cell">${esc(k.lop || "—")}</div></td>
+      <td><div class="sub-cell">${esc(pageOf(k.page).name)}</div><div class="sub-cell">${esc(tepOf(k.tep).name)}</div></td>
+      <td>${lvChip(k.level)}${g && g.alive ? `<div class="sub-cell" style="color:var(--s2)">⏳ còn ${g.left}h vàng</div>` : ""}</td>
+      <td>${T ? (T.status === "done" ? `<b>${esc(T.lopDeXuat || "")}</b><div class="sub-cell">${T.prog === "IELTS" ? "SP " + T.band : T.total + "đ"} · ${fmtD(T.date)}</div>`
+      : T.status === "booked" ? `<span class="chip">Hẹn ${fmtD(T.date)}</span>` : `<span class="chip dg">${T.status === "absent" ? "Không đến" : "Hủy"}</span>`) : '<span class="sub-cell">—</span>'}</td>
+      <td>${ownerCell(k)}</td>
+      <td><div>${fmtD(k.lastAct)}</div><div class="sub-cell">${daysSince(k.lastAct)} ngày trước</div></td>
+      <td>${k.next ? `<div>${ACT[k.next.type]} ${fmtD(k.next.date)}</div>${od > 0 ? `<div class="sub-cell" style="color:var(--critical)">Trễ ${od} ngày</div>` : ""}` : '<span class="sub-cell">—</span>'}</td>
+      <td class="tnum" style="text-align:right">${O ? fmtVND(O.doanhThu) : "—"}</td>`;
+    tr.querySelector("input").onclick = e => { e.stopPropagation(); S.sel.has(k.id) ? S.sel.delete(k.id) : S.sel.add(k.id); render(); };
+    tr.onclick = () => openKH(k.id);
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb); wrap.appendChild(t); card.appendChild(wrap);
+  if (!list.length) card.appendChild(el("div", "empty", "Không có khách nào khớp bộ lọc."));
+  const pages = Math.max(1, Math.ceil(list.length / S.per));
+  const pg = el("div", "pager"); pg.innerHTML = `<span class="muted">Trang ${S.page}/${pages}</span>`;
+  const p1 = el("button", "btn sm", "‹"), p2 = el("button", "btn sm", "›");
+  p1.disabled = S.page <= 1; p2.disabled = S.page >= pages;
+  p1.onclick = () => { S.page--; render(); scrollTo(0, 0); }; p2.onclick = () => { S.page++; render(); scrollTo(0, 0); };
+  pg.appendChild(p1); pg.appendChild(p2); card.appendChild(pg);
+  v.appendChild(card);
+  const ca = $("#ckAll"); if (ca) ca.onclick = () => { if (ca.checked) list.slice(st, st + S.per).forEach(k => S.sel.add(k.id)); else S.sel.clear(); render(); };
+}
+function exportCSV(list) {
+  const head = ["Mã KH", "Học viên", "Phụ huynh", "SĐT", "Email", "Tỉnh", "Tỉnh Vua", "Cấp học", "Lớp", "Đúng tệp", "Page", "Tệp QC", "Nguồn", "Zalo OA", "Trạng thái", "Sales", "Team", "Cơ sở", "Ngày tạo"];
+  const rows = list.map(k => [k.id, k.hoTenHV, k.hoTenPH, k.phone, k.email, k.tinh, laTinhVua(k.tinh) ? "x" : "", capOf(k.cap).name, k.lop,
+    capOf(k.cap).dungTep ? "x" : "", pageOf(k.page).name, tepOf(k.tep).name, srcOf(k.source).name, k.zaloOA ? "x" : "", lvOf(k.level).id + " " + lvOf(k.level).name,
+    k.owner ? userOf(k.owner).name : "", teamOf(k.team).name, cosoOf(k.coso).name, k.createdAt]);
+  const csv = "﻿" + [head, ...rows].map(r => r.map(c => `"${String(c == null ? "" : c).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = "ales-khach-hang.csv"; a.click();
+  toast("Đã xuất CSV");
+}
+function newKH() {
+  const name = prompt("Tên học viên:"); if (!name) return;
+  const ph = prompt("Số điện thoại:") || "";
+  const trung = KH.find(k => k.phone === ph);
+  if (trung && !confirm(`SĐT này đã có trong hệ thống (${trung.hoTenHV} — ${userOf(trung.owner).name}). Vẫn tạo mới?`)) return;
+  const u = me();
+  const k = {
+    id: "KH" + (110000 + KH.length), hoTenHV: name, hoTenPH: "", phone: ph, email: "", ngaySinh: "",
+    tinh: "Hà Nội", cap: "cxd", lop: "", page: "p1", tep: "3555", source: "hotline", zaloOA: 0, chuongTrinh: "IELTS",
+    owner: ["sales", "ql"].includes(u.role) ? u.id : null, team: u.team || "T1", coso: u.coso || "HVT",
+    level: "L2", kho: 0, mucTieu: "Chưa xác định", createdAt: iso(TODAY), lyDoBo: null,
+    acts: [{ t: iso(TODAY), type: "sys", text: "Tạo khách hàng thủ công.", by: u.id }], lastAct: iso(TODAY),
+    next: { date: iso(TODAY), type: "call", note: "Gọi lần đầu, xác nhận nhu cầu" }, tests: [], orders: []
+  };
+  KH.unshift(k); toast("Đã thêm khách"); render(); openKH(k.id);
+}
+
+/* ---------- PIPELINE ---------- */
+function viewPipe(v) {
+  v.appendChild(el("div", "sub", "Kéo thả thẻ sang cột khác để đổi trạng thái. Chuyển sang L5 sẽ mở form đặt lịch test."));
+  const board = el("div", "board");
+  LEVELS.forEach(L => {
+    const items = scope().filter(k => k.level === L.id && !k.kho);
+    const col = el("div", "col");
+    col.innerHTML = `<div class="col-h"><div class="t"><span class="dot" style="background:${L.color}"></span>${L.id} ${L.name}<span class="muted" style="margin-left:auto">${items.length}</span></div></div>`;
+    const body = el("div", "col-b");
+    items.slice(0, 50).forEach(k => {
+      const c = el("div", "kcard"); c.draggable = true;
+      const u = userOf(k.owner), g = golden(k.id);
+      c.innerHTML = `<div class="kn">${esc(k.hoTenHV)}</div><div class="sub-cell tnum">${esc(k.phone)}</div>
+        <div class="kr">${k.owner ? avatar(u, 19) : `<span class="chip dg" style="padding:0 5px">?</span>`}
+        <span style="overflow:hidden;text-overflow:ellipsis">${esc(capOf(k.cap).name)}${laTinhVua(k.tinh) ? " ★" : ""}</span></div>
+        ${g && g.alive ? `<div class="kr" style="color:var(--s2)">⏳ còn ${g.left}h vàng</div>` : ""}
+        ${quaHan(k) > 0 ? `<div class="kr" style="color:var(--critical)">⚠ quá hạn ${quaHan(k)} ngày</div>` : ""}`;
+      c.onclick = () => openKH(k.id);
+      c.ondragstart = e => { e.dataTransfer.setData("text/plain", k.id); c.classList.add("drag"); };
+      c.ondragend = () => c.classList.remove("drag");
+      body.appendChild(c);
+    });
+    if (items.length > 50) body.appendChild(el("div", "sub-cell", `… và ${items.length - 50} khách nữa`));
+    col.appendChild(body);
+    col.ondragover = e => { e.preventDefault(); col.classList.add("over"); };
+    col.ondragleave = () => col.classList.remove("over");
+    col.ondrop = e => { e.preventDefault(); col.classList.remove("over"); moveLevel(e.dataTransfer.getData("text/plain"), L.id); };
+    board.appendChild(col);
+  });
+  v.appendChild(board);
+}
+function moveLevel(id, to) {
+  const k = khOf(id); if (!k || k.level === to) return;
+  if (to === "L5" && !k.zaloOA) { toast("Chưa tích Zalo OA — bắt buộc trước khi đặt lịch test"); openKH(id, "test"); return; }
+  const from = k.level; k.level = to;
+  k.acts.push({ t: iso(TODAY), type: "stage", text: `Đổi trạng thái: ${from} → ${to} ${lvOf(to).name}`, by: S.me });
+  k.lastAct = iso(TODAY);
+  if (to === "L8") k.next = null;
+  else if (to === "L9") { k.next = null; k.lyDoBo = k.lyDoBo || "Chưa ghi lý do"; }
+  else if (!k.next) k.next = { date: iso(dAdd(TODAY, 1)), type: "call", note: "Theo dõi tiếp" };
+  toast(`${k.hoTenHV} → ${to} ${lvOf(to).name}`); render();
+  if (S.open === id) openKH(id, S.drTab);
+}
+
+/* ---------- KHO DATA ---------- */
+function viewKho(v) {
+  const list = KH.filter(k => k.kho);
+  const w = el("div", "warnbar info");
+  w.innerHTML = `<span>🗄</span><span>Kho chứa data của nhân viên đã nghỉ việc. Khi khoá tài khoản một sale, toàn bộ khách của người đó tự động về đây để chia lại cho nhân viên mới.</span>`;
+  v.appendChild(w);
+
+  const bar = el("div", "card"); const bb = el("div", "card-b row");
+  bb.innerHTML = `<b>${list.length} khách trong kho</b>`;
+  bb.appendChild(el("div", "grow"));
+  const s2 = el("select"); s2.appendChild(new Option("— Chia lại cho —", ""));
+  SALES.forEach(u => s2.appendChild(new Option(u.name + " · " + teamOf(u.team).name, u.id)));
+  const num = el("input"); num.type = "number"; num.value = 20; num.style.width = "80px"; num.title = "Số khách chia";
+  const go = el("button", "btn pri sm", "Chia lại");
+  go.onclick = () => {
+    if (!s2.value) { toast("Chọn người nhận trước"); return; }
+    const u = userOf(s2.value); let n = 0;
+    list.slice(0, +num.value || 0).forEach(k => { k.owner = u.id; k.team = u.team; k.coso = u.coso; k.kho = 0; k.level = "L1"; k.next = { date: iso(TODAY), type: "call", note: "Data từ kho — gọi khai thác lại" }; k.acts.push({ t: iso(TODAY), type: "sys", text: "Chia lại từ Kho cho " + u.name, by: S.me }); n++; });
+    toast(`Đã chia ${n} khách cho ${u.name}`); render();
+  };
+  bb.appendChild(el("span", "sub", "Số lượng")); bb.appendChild(num); bb.appendChild(s2); bb.appendChild(go);
+  bar.appendChild(bb); v.appendChild(bar);
+
+  const card = el("div", "card"); const wrap = el("div", "tbl-wrap"); const t = el("table");
+  t.innerHTML = `<thead><tr><th>Học viên</th><th>SĐT</th><th>Tỉnh</th><th>Cấp / Lớp</th><th>Page</th><th>Trạng thái cũ</th><th>Ngày vào hệ thống</th></tr></thead>`;
+  const tb = el("tbody");
+  list.slice(0, 200).forEach(k => {
+    const tr = el("tr");
+    tr.innerHTML = `<td class="name-cell">${esc(k.hoTenHV)}</td><td class="tnum">${esc(k.phone)}</td>
+      <td>${laTinhVua(k.tinh) ? "★ " : ""}${esc(k.tinh)}</td><td>${esc(capOf(k.cap).name)} · ${esc(k.lop || "—")}</td>
+      <td class="sub-cell">${esc(pageOf(k.page).name)}</td><td>${lvChip(k.level)}</td><td>${fmtD(k.createdAt)}</td>`;
+    tr.onclick = () => openKH(k.id); tb.appendChild(tr);
+  });
+  t.appendChild(tb); wrap.appendChild(t); card.appendChild(wrap);
+  if (!list.length) card.appendChild(el("div", "empty", "Kho đang trống."));
+  v.appendChild(card);
+}
+/* ============ Màn hình phần 2 ============ */
+
+/* ---------- LỊCH TEST ---------- */
+function viewLichTest(v) {
+  const y = S.calY, m = S.calM;
+  const ts = myTests().filter(t => inMonth(t.date, y, m));
+  const head = el("div", "card"); const hb = el("div", "card-b row");
+  const p = el("button", "btn sm", "‹"), n = el("button", "btn sm", "›"), now = el("button", "btn sm", "Hôm nay");
+  p.onclick = () => { S.calM--; if (S.calM < 0) { S.calM = 11; S.calY--; } render(); };
+  n.onclick = () => { S.calM++; if (S.calM > 11) { S.calM = 0; S.calY++; } render(); };
+  now.onclick = () => { S.calM = TODAY.getMonth(); S.calY = TODAY.getFullYear(); render(); };
+  hb.appendChild(p); hb.appendChild(n); hb.appendChild(now);
+  hb.appendChild(el("b", null, `Tháng ${m + 1} / ${y}`));
+  hb.appendChild(el("div", "grow"));
+  hb.appendChild(el("span", "sub", `${ts.length} ca · ${ts.filter(t => t.status === "done").length} đã test · ${ts.filter(t => t.status === "booked").length} sắp tới · ${ts.filter(t => t.status === "absent").length} không đến`));
+  const bk = el("button", "btn pri sm", "+ Đặt lịch test"); bk.onclick = () => datLichNhanh();
+  hb.appendChild(bk);
+  head.appendChild(hb); v.appendChild(head);
+
+  const first = new Date(y, m, 1), sd = (first.getDay() + 6) % 7, days = new Date(y, m + 1, 0).getDate();
+  const cal = el("div", "cal");
+  ["T2", "T3", "T4", "T5", "T6", "T7", "CN"].forEach(d => cal.appendChild(el("div", "hd", d)));
+  for (let i = 0; i < sd; i++) cal.appendChild(el("div", "cell off"));
+  for (let d = 1; d <= days; d++) {
+    const ds = iso(new Date(y, m, d));
+    const cell = el("div", "cell" + (ds === iso(TODAY) ? " today" : ""));
+    cell.appendChild(el("div", "dnum", String(d)));
+    const list = ts.filter(t => t.date === ds).sort((a, b) => a.gio.localeCompare(b.gio));
+    list.slice(0, 4).forEach(t => {
+      const k = khOf(t.khId) || {};
+      const cls = t.status === "done" ? " done" : t.status === "absent" ? " absent" : ds < iso(TODAY) ? " late" : "";
+      const e = el("div", "ev" + cls, `${t.gio} ${esc((k.hoTenHV || "").split(" ").slice(-2).join(" "))}`);
+      e.title = `${k.hoTenHV} · ${progOf(t.prog).name} · ${userOf(t.testerId).name}`;
+      e.onclick = () => openTest(t.id);
+      cell.appendChild(e);
+    });
+    if (list.length > 4) cell.appendChild(el("div", "sub-cell", `+${list.length - 4} nữa`));
+    cal.appendChild(cell);
+  }
+  const tail = (7 - ((sd + days) % 7)) % 7;
+  for (let i = 0; i < tail; i++) cal.appendChild(el("div", "cell off"));
+  v.appendChild(cal);
+
+  const up = myTests().filter(t => t.status === "booked" && t.date >= iso(TODAY)).sort((a, b) => (a.date + a.gio).localeCompare(b.date + b.gio));
+  const c = el("div", "card");
+  c.innerHTML = `<div class="card-h"><div><h3>Ca sắp tới</h3><div class="sub">Nhớ nhắc khách trước giờ test — và kiểm tra khách đã quan tâm Zalo OA chưa</div></div></div>`;
+  const wrap = el("div", "tbl-wrap"); const t2 = el("table");
+  t2.innerHTML = `<thead><tr><th>Ngày · Giờ</th><th>Học viên</th><th>Chương trình</th><th>Thiết bị</th><th>Zalo OA</th><th>Tester</th><th>Sale</th><th></th></tr></thead>`;
+  const tb = el("tbody");
+  up.slice(0, 40).forEach(t => {
+    const k = khOf(t.khId) || {};
+    const tr = el("tr");
+    tr.innerHTML = `<td><b>${fmtD(t.date)}</b><div class="sub-cell">${t.gio}</div></td>
+      <td class="name-cell">${esc(k.hoTenHV)}<div class="sub-cell tnum">${esc(k.phone)}</div></td>
+      <td>${esc(progOf(t.prog).name)}</td><td>${esc(t.thietBi)}</td>
+      <td>${k.zaloOA ? '<span class="chip ok">đã quan tâm</span>' : '<span class="chip dg">CHƯA</span>'}</td>
+      <td>${esc(userOf(t.testerId).name)} <span class="sub-cell">${userOf(t.testerId).gv || ""}</span></td>
+      <td class="sub-cell">${esc(userOf(t.saleId).name)}</td><td style="text-align:right"></td>`;
+    const b = el("button", "btn sm", "Mở"); b.onclick = e => { e.stopPropagation(); openTest(t.id); };
+    tr.lastElementChild.appendChild(b); tr.onclick = () => openKH(t.khId); tb.appendChild(tr);
+  });
+  t2.appendChild(tb); wrap.appendChild(t2); c.appendChild(wrap);
+  if (!up.length) c.appendChild(el("div", "empty", "Chưa có ca nào sắp tới."));
+  v.appendChild(c);
+}
+function datLichNhanh() {
+  const q = prompt("Nhập SĐT hoặc tên học viên cần đặt lịch test:"); if (!q) return;
+  const k = KH.find(x => x.phone === q.trim() || x.hoTenHV.toLowerCase().includes(q.trim().toLowerCase()));
+  if (!k) { toast("Không tìm thấy khách"); return; }
+  openKH(k.id, "test");
+}
+
+/* ---------- CA CỦA TÔI (tester) ---------- */
+function viewCaCuaToi(v) {
+  const all = myRole() === "tester" ? caCuaToi() : TESTS.slice().sort((a, b) => (b.date + b.gio).localeCompare(a.date + a.gio));
+  const homNay = all.filter(t => t.date === iso(TODAY));
+  const chua = all.filter(t => t.date <= iso(TODAY) && t.status !== "cancel" && t.status !== "absent" && !t.filledAt);
+  const xong = all.filter(t => t.filledAt);
+  const p = progOf; const cong = xong.filter(t => inMonth(t.date, TODAY.getFullYear(), TODAY.getMonth())).reduce((s, t) => s + p(t.prog).cong, 0);
+  const tiles = el("div", "tiles");
+  tiles.innerHTML = `
+    <div class="tile"><div class="lab">Ca hôm nay</div><div class="val">${homNay.length}</div><div class="sub">${fmtD(iso(TODAY))}</div></div>
+    <div class="tile"><div class="lab">Chưa nhập kết quả</div><div class="val" style="color:var(--critical)">${chua.length}</div><div class="sub">Điền thiếu = không tính công</div></div>
+    <div class="tile"><div class="lab">Đã hoàn thành tháng này</div><div class="val">${xong.filter(t => inMonth(t.date, TODAY.getFullYear(), TODAY.getMonth())).length}</div><div class="sub">ca</div></div>
+    <div class="tile"><div class="lab">Công tạm tính tháng này</div><div class="val">${fmtVND(cong)}</div><div class="sub">IELTS 60k · GT &amp; Kids 45k</div></div>`;
+  v.appendChild(tiles);
+
+  const mk = (title, arr, sub) => {
+    const c = el("div", "card");
+    c.innerHTML = `<div class="card-h"><div><h3>${title}</h3><div class="sub">${sub}</div></div></div>`;
+    const wrap = el("div", "tbl-wrap"); const t = el("table");
+    t.innerHTML = `<thead><tr><th>Ngày · Giờ</th><th>Học viên</th><th>Lớp</th><th>Chương trình</th><th>Thông tin sale gửi</th><th>Trạng thái</th><th></th></tr></thead>`;
+    const tb = el("tbody");
+    arr.slice(0, 60).forEach(x => {
+      const k = khOf(x.khId) || {};
+      const tr = el("tr");
+      tr.innerHTML = `<td><b>${fmtD(x.date)}</b><div class="sub-cell">${x.gio}</div></td>
+        <td class="name-cell">${esc(k.hoTenHV)}<div class="sub-cell">${esc(k.tinh)}</div></td>
+        <td>${esc(k.lop || "—")}</td><td>${esc(progOf(x.prog).name)}</td>
+        <td class="sub-cell" style="max-width:280px;white-space:normal">${esc((k.mucTieu || "") + " · " + (k.hoTenPH ? "PH: " + k.hoTenPH : ""))}</td>
+        <td>${x.filledAt ? '<span class="chip ok">đã nhập</span>' : x.status === "absent" ? '<span class="chip wn">không đến</span>' : '<span class="chip dg">chưa nhập</span>'}</td>
+        <td style="text-align:right"></td>`;
+      const b = el("button", "btn " + (x.filledAt ? "sm" : "pri sm"), x.filledAt ? "Xem phiếu" : "Nhập kết quả");
+      b.onclick = e => { e.stopPropagation(); openTest(x.id); };
+      tr.lastElementChild.appendChild(b); tr.onclick = () => openTest(x.id); tb.appendChild(tr);
+    });
+    t.appendChild(tb); wrap.appendChild(t); c.appendChild(wrap);
+    if (!arr.length) c.appendChild(el("div", "empty", "Không có ca nào."));
+    return c;
+  };
+  v.appendChild(mk("🔴 Chưa nhập kết quả", chua, "Quy định ALES: điền đủ và đúng ngay trong ngày test, thiếu là không được tính công"));
+  v.appendChild(mk("Ca hôm nay", homNay, fmtD(iso(TODAY))));
+  v.appendChild(mk("Đã hoàn thành", xong.slice(0, 40), "40 ca gần nhất"));
+}
+
+/* ---------- ĐƠN HÀNG ---------- */
+function viewDonHang(v) {
+  const os = myOrders().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const tiles = el("div", "tiles");
+  const dt = os.reduce((s, o) => s + o.doanhThu, 0), thu = os.reduce((s, o) => s + o.dots.filter(d => d.daThu).reduce((a, b) => a + b.soTien, 0), 0);
+  tiles.innerHTML = `
+    <div class="tile"><div class="lab">Số đơn</div><div class="val">${os.length}</div></div>
+    <div class="tile"><div class="lab">Doanh thu</div><div class="val">${fmtM(dt)}</div><div class="sub">Doanh số gốc ${fmtM(os.reduce((s, o) => s + o.giaGoc, 0))}</div></div>
+    <div class="tile"><div class="lab">Đã thu</div><div class="val">${fmtM(thu)}</div><div class="sub">Còn lại ${fmtM(dt - thu)}</div></div>
+    <div class="tile"><div class="lab">Chờ duyệt</div><div class="val" style="color:var(--warning)">${os.filter(o => o.trangThai === "choDuyet").length}</div></div>`;
+  v.appendChild(tiles);
+  v.appendChild(tblDon(os, "Tất cả đơn hàng"));
+}
+function tblDon(os, title, extra) {
+  const c = el("div", "card");
+  c.innerHTML = `<div class="card-h"><div><h3>${title}</h3><div class="sub">${os.length} đơn</div></div></div>`;
+  const wrap = el("div", "tbl-wrap"); const t = el("table");
+  t.innerHTML = `<thead><tr><th>Mã đơn</th><th>Học viên</th><th>Khoá</th><th style="text-align:right">Doanh số</th><th style="text-align:right">Chiết khấu</th><th style="text-align:right">Doanh thu</th><th style="text-align:right">Đã thu</th><th>Đợt</th><th>Tư vấn</th><th>Trạng thái</th><th>Bill</th><th>Hợp đồng</th><th>Cơ sở</th>${extra ? "<th></th>" : ""}</tr></thead>`;
+  const tb = el("tbody");
+  os.slice(0, 120).forEach(o => {
+    const k = khOf(o.khId) || {}; const C = courseOf(o.code) || {};
+    const thu = o.dots.filter(d => d.daThu).reduce((s, d) => s + d.soTien, 0);
+    const tr = el("tr");
+    tr.innerHTML = `<td><b>${o.id}</b><div class="sub-cell">${fmtD(o.createdAt)}</div></td>
+      <td class="name-cell">${esc(k.hoTenHV || "")}<div class="sub-cell tnum">${esc(k.phone || "")}</div></td>
+      <td><b>${o.code}</b><div class="sub-cell">${esc(C.name || "")}</div></td>
+      <td class="tnum" style="text-align:right">${fmtVND(o.giaGoc)}</td>
+      <td class="tnum" style="text-align:right">${fmtVND(o.chietKhau)}${o.lechGia ? ' <span class="chip wn" style="padding:0 5px">lệch giá</span>' : ""}</td>
+      <td class="tnum" style="text-align:right;font-weight:650">${fmtVND(o.doanhThu)}</td>
+      <td class="tnum" style="text-align:right">${fmtVND(thu)}<div class="sub-cell">${thu >= o.doanhThu ? "đủ" : "còn " + fmtM(o.doanhThu - thu)}</div></td>
+      <td>${o.dots.length} đợt${o.mpos ? '<div class="sub-cell">MPOS +2,2%</div>' : ""}</td>
+      <td class="sub-cell">${esc(userOf(o.tuVan1).name)}${o.tuVan2 ? "<br>+ " + esc(userOf(o.tuVan2).name) + ` (${o.chia}%)` : ""}</td>
+      <td>${o.trangThai === "choDuyet" ? '<span class="chip wn">chờ duyệt</span>' : '<span class="chip ok">đã duyệt</span>'}</td>
+      <td>${o.bills.length ? '<span class="chip ok">có</span>' : '<span class="chip dg">thiếu</span>'}</td>
+      <td class="sub-cell">${esc(o.hopDong)}</td>
+      <td class="sub-cell">${esc(cosoOf(o.coso).name)}</td>${extra ? "<td></td>" : ""}`;
+    if (extra) extra(tr, o);
+    tr.onclick = () => openKH(o.khId, "deal");
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb); wrap.appendChild(t); c.appendChild(wrap);
+  if (!os.length) c.appendChild(el("div", "empty", "Không có đơn nào."));
+  return c;
+}
+
+/* ---------- DUYỆT ĐƠN (kế toán) ---------- */
+const CHECKLIST = ["Bill khách hàng", "Ngày chuyển", "Số tiền", "Khoá học", "Quà tặng thời gian vàng", "Địa chỉ", "Thông tin học viên"];
+function viewDuyet(v) {
+  const cho = ORDERS.filter(o => o.trangThai === "choDuyet").sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const w = el("div", "warnbar info");
+  w.innerHTML = `<span>✔</span><span>Kế toán duyệt theo đúng 7 mục: ${CHECKLIST.join(" · ")}</span>`;
+  v.appendChild(w);
+  v.appendChild(tblDon(cho, "Đơn chờ duyệt", (tr, o) => {
+    const b = el("button", "btn pri sm", "Duyệt"); b.onclick = e => { e.stopPropagation(); openKH(o.khId, "duyet"); };
+    tr.lastElementChild.appendChild(b);
+  }));
+  v.appendChild(tblDon(ORDERS.filter(o => o.trangThai === "daDuyet").slice(0, 40), "Đã duyệt gần đây"));
+}
+
+/* ---------- CÔNG NỢ ---------- */
+function viewCongNo(v) {
+  const os = myOrders();
+  const rows = [];
+  os.forEach(o => o.dots.forEach((d, i) => { if (!d.daThu) rows.push({ o, d, i }); }));
+  rows.sort((a, b) => a.d.ngay.localeCompare(b.d.ngay));
+  const quaHanR = rows.filter(r => r.d.ngay < iso(TODAY));
+  const tiles = el("div", "tiles");
+  tiles.innerHTML = `
+    <div class="tile"><div class="lab">Tổng phải thu</div><div class="val">${fmtM(rows.reduce((s, r) => s + r.d.soTien, 0))}</div><div class="sub">${rows.length} đợt chưa thu</div></div>
+    <div class="tile"><div class="lab">Quá hạn</div><div class="val" style="color:var(--critical)">${fmtM(quaHanR.reduce((s, r) => s + r.d.soTien, 0))}</div><div class="sub">${quaHanR.length} đợt</div></div>
+    <div class="tile"><div class="lab">Đến hạn 7 ngày tới</div><div class="val">${fmtM(rows.filter(r => r.d.ngay >= iso(TODAY) && r.d.ngay <= iso(dAdd(TODAY, 7))).reduce((s, r) => s + r.d.soTien, 0))}</div></div>
+    <div class="tile"><div class="lab">Đã thu</div><div class="val">${fmtM(os.reduce((s, o) => s + o.dots.filter(d => d.daThu).reduce((a, b) => a + b.soTien, 0), 0))}</div></div>`;
+  v.appendChild(tiles);
+
+  const c = el("div", "card");
+  c.innerHTML = `<div class="card-h"><div><h3>Các đợt học phí chưa thu</h3><div class="sub">Sắp theo ngày đến hạn — quá hạn hiện đỏ</div></div></div>`;
+  const wrap = el("div", "tbl-wrap"); const t = el("table");
+  t.innerHTML = `<thead><tr><th>Đến hạn</th><th>Học viên</th><th>Đơn</th><th>Đợt</th><th style="text-align:right">Số tiền</th><th>Sale</th><th>Hình thức</th><th></th></tr></thead>`;
+  const tb = el("tbody");
+  rows.slice(0, 120).forEach(r => {
+    const k = khOf(r.o.khId) || {}; const late = r.d.ngay < iso(TODAY);
+    const tr = el("tr");
+    tr.innerHTML = `<td><b style="${late ? "color:var(--critical)" : ""}">${fmtD(r.d.ngay)}</b>${late ? `<div class="sub-cell" style="color:var(--critical)">trễ ${daysSince(r.d.ngay)} ngày</div>` : ""}</td>
+      <td class="name-cell">${esc(k.hoTenHV || "")}<div class="sub-cell tnum">${esc(k.phone || "")}</div></td>
+      <td>${r.o.id}<div class="sub-cell">${r.o.code}</div></td>
+      <td>Đợt ${r.i + 1}/${r.o.dots.length}</td>
+      <td class="tnum" style="text-align:right;font-weight:650">${fmtVND(r.d.soTien)}${r.o.mpos ? `<div class="sub-cell">qua MPOS: ${fmtVND(r.d.soTien / (1 - MPOS_FEE))}</div>` : ""}</td>
+      <td class="sub-cell">${esc(userOf(r.o.tuVan1).name)}</td><td class="sub-cell">${esc(r.o.hinhThuc)}</td><td style="text-align:right"></td>`;
+    const b = el("button", "btn ok sm", "Đã thu"); b.onclick = e => { e.stopPropagation(); r.d.daThu = r.d.soTien; toast("Đã ghi nhận thu " + fmtVND(r.d.soTien)); render(); };
+    tr.lastElementChild.appendChild(b);
+    tr.onclick = () => openKH(r.o.khId, "deal"); tb.appendChild(tr);
+  });
+  t.appendChild(tb); wrap.appendChild(t); c.appendChild(wrap);
+  if (!rows.length) c.appendChild(el("div", "empty", "Không còn đợt nào chưa thu 🎉"));
+  v.appendChild(c);
+}
+
+/* ---------- XẾP LỚP (HR / Đào tạo) ---------- */
+function viewXepLop(v) {
+  const cho = ORDERS.filter(o => o.xepLop !== "Đã xếp lớp").sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const tre = cho.filter(o => daysSince(o.createdAt) > 7);
+  const kg7 = ORDERS.filter(o => o.ngayKG && o.ngayKG >= iso(TODAY) && o.ngayKG <= iso(dAdd(TODAY, 7)));
+  const tiles = el("div", "tiles");
+  tiles.innerHTML = `
+    <div class="tile"><div class="lab">Đang chờ xếp lớp</div><div class="val">${cho.length}</div><div class="sub">KPI của HR: dưới 7 ngày</div></div>
+    <div class="tile"><div class="lab">Quá 7 ngày</div><div class="val" style="color:var(--critical)">${tre.length}</div><div class="sub">Cần xử lý ngay</div></div>
+    <div class="tile"><div class="lab">Khai giảng 7 ngày tới</div><div class="val">${kg7.length}</div></div>
+    <div class="tile"><div class="lab">Đã xếp lớp</div><div class="val">${ORDERS.filter(o => o.xepLop === "Đã xếp lớp").length}</div></div>`;
+  v.appendChild(tiles);
+
+  const c = el("div", "card");
+  c.innerHTML = `<div class="card-h"><div><h3>Hàng đợi xếp lớp</h3><div class="sub">Đồng hồ đếm từ ngày đăng ký · đỏ khi vượt 7 ngày</div></div></div>`;
+  const wrap = el("div", "tbl-wrap"); const t = el("table");
+  t.innerHTML = `<thead><tr><th>Chờ</th><th>Học viên</th><th>Khoá</th><th>Trình độ đầu vào</th><th>Lịch rảnh của HV</th><th>Trạng thái</th><th>Giáo viên</th><th></th></tr></thead>`;
+  const tb = el("tbody");
+  cho.slice(0, 80).forEach(o => {
+    const k = khOf(o.khId) || {}; const d = daysSince(o.createdAt);
+    const T = (k.tests || []).map(testOf).filter(x => x && x.status === "done")[0];
+    const tr = el("tr");
+    tr.innerHTML = `<td><b style="${d > 7 ? "color:var(--critical)" : ""}">${d} ngày</b><div class="sub-cell">${fmtD(o.createdAt)}</div></td>
+      <td class="name-cell">${esc(k.hoTenHV || "")}<div class="sub-cell">${esc(cosoOf(o.coso).name)}</div></td>
+      <td><b>${o.code}</b><div class="sub-cell">${(courseOf(o.code) || {}).gio || 0}h · GVVN ${(courseOf(o.code) || {}).gvvn || 0} / GVNN ${(courseOf(o.code) || {}).gvnn || 0}</div></td>
+      <td>${T ? esc(T.lopDeXuat || "") : '<span class="sub-cell">chưa test</span>'}</td>
+      <td class="sub-cell">${esc(o.lichHoc || "chưa thống nhất")}</td>
+      <td><span class="chip wn">${esc(o.xepLop)}</span></td>
+      <td class="sub-cell">${esc(o.gv || "—")}</td><td style="text-align:right"></td>`;
+    const b = el("button", "btn pri sm", "Xếp lớp"); b.onclick = e => { e.stopPropagation(); openKH(o.khId, "lop"); };
+    tr.lastElementChild.appendChild(b); tr.onclick = () => openKH(o.khId, "lop"); tb.appendChild(tr);
+  });
+  t.appendChild(tb); wrap.appendChild(t); c.appendChild(wrap);
+  if (!cho.length) c.appendChild(el("div", "empty", "Không còn ca nào chờ xếp lớp 🎉"));
+  v.appendChild(c);
+
+  const c2 = el("div", "card");
+  c2.innerHTML = `<div class="card-h"><div><h3>Lịch khai giảng 7 ngày tới</h3></div></div>`;
+  const w2 = el("div", "tbl-wrap"); const t2 = el("table");
+  t2.innerHTML = `<thead><tr><th>Ngày KG</th><th>Học viên</th><th>Khoá</th><th>Giáo viên</th><th>Lịch học</th><th>CSKH</th></tr></thead>`;
+  const tb2 = el("tbody");
+  kg7.sort((a, b) => a.ngayKG.localeCompare(b.ngayKG)).forEach(o => {
+    const k = khOf(o.khId) || {};
+    const tr = el("tr");
+    tr.innerHTML = `<td><b>${fmtD(o.ngayKG)}</b></td><td class="name-cell">${esc(k.hoTenHV || "")}</td><td>${o.code}</td>
+      <td>${esc(o.gv || "—")}</td><td class="sub-cell">${esc(o.lichHoc)}</td><td class="sub-cell">${esc(userOf(o.cskh).name)}</td>`;
+    tr.onclick = () => openKH(o.khId, "lop"); tb2.appendChild(tr);
+  });
+  t2.appendChild(tb2); w2.appendChild(t2); c2.appendChild(w2);
+  if (!kg7.length) c2.appendChild(el("div", "empty", "Không có lớp nào khai giảng trong 7 ngày tới."));
+  v.appendChild(c2);
+}
+
+/* ---------- CSKH & QUÀ TẶNG ---------- */
+function viewCSKH(v) {
+  const os = ORDERS.filter(o => o.xepLop === "Đã xếp lớp");
+  const chuaGiao = os.filter(o => !o.qua.taiNghe.daGiao);
+  const tiles = el("div", "tiles");
+  tiles.innerHTML = `
+    <div class="tile"><div class="lab">Học viên đang theo dõi</div><div class="val">${os.length}</div></div>
+    <div class="tile"><div class="lab">Chưa giao tai nghe</div><div class="val" style="color:var(--warning)">${chuaGiao.length}</div></div>
+    <div class="tile"><div class="lab">Buổi gia sư đã cam kết</div><div class="val">${os.reduce((s, o) => s + o.qua.giaSu, 0)}</div><div class="sub">theo gói học</div></div>
+    <div class="tile"><div class="lab">Khai giảng hôm nay</div><div class="val">${os.filter(o => o.ngayKG === iso(TODAY)).length}</div></div>`;
+  v.appendChild(tiles);
+
+  const c = el("div", "card");
+  c.innerHTML = `<div class="card-h"><div><h3>Bàn giao CSKH &amp; quà tặng theo gói</h3><div class="sub">Quà do gói học quyết định — hệ thống tự gắn khi chốt đơn</div></div></div>`;
+  const wrap = el("div", "tbl-wrap"); const t = el("table");
+  t.innerHTML = `<thead><tr><th>Học viên</th><th>Khoá</th><th>Khai giảng</th><th>Giáo viên</th><th>Tai nghe</th><th>Gia sư bổ trợ</th><th>06 buổi GVNN</th><th>CSKH</th><th></th></tr></thead>`;
+  const tb = el("tbody");
+  os.slice(0, 100).forEach(o => {
+    const k = khOf(o.khId) || {};
+    const tr = el("tr");
+    tr.innerHTML = `<td class="name-cell">${esc(k.hoTenHV || "")}<div class="sub-cell tnum">${esc(k.phone || "")}</div></td>
+      <td><b>${o.code}</b></td><td>${fmtD(o.ngayKG)}</td><td class="sub-cell">${esc(o.gv || "—")}</td>
+      <td>${o.qua.taiNghe.daGiao ? '<span class="chip ok">đã giao</span>' : '<span class="chip wn">chưa giao</span>'}</td>
+      <td>${o.qua.giaSu} buổi</td><td>${o.qua.gvnn} buổi</td>
+      <td class="sub-cell">${esc(userOf(o.cskh).name)}</td><td style="text-align:right"></td>`;
+    if (!o.qua.taiNghe.daGiao) {
+      const b = el("button", "btn ok sm", "Đánh dấu đã giao");
+      b.onclick = e => { e.stopPropagation(); o.qua.taiNghe.daGiao = 1; toast("Đã ghi nhận giao tai nghe"); render(); };
+      tr.lastElementChild.appendChild(b);
+    }
+    tr.onclick = () => openKH(o.khId, "lop"); tb.appendChild(tr);
+  });
+  t.appendChild(tb); wrap.appendChild(t); c.appendChild(wrap);
+  v.appendChild(c);
+}
+
+/* ---------- NHẬT KÝ CHĂM SÓC ---------- */
+function viewNhatKy(v) {
+  const day = iso(TODAY);
+  const bar = el("div", "card"); const bb = el("div", "card-b row");
+  const dt = el("input"); dt.type = "date"; dt.value = S.nkDay || day;
+  dt.onchange = () => { S.nkDay = dt.value; render(); };
+  bb.appendChild(el("span", "sub", "Ngày")); bb.appendChild(dt);
+  bb.appendChild(el("div", "grow"));
+  bar.appendChild(bb); v.appendChild(bar);
+  const d = S.nkDay || day;
+  const pool = myRole() === "sales" ? [me()] : myRole() === "ql" ? SALES.filter(s => s.team === me().team) : SALES;
+
+  const rows = pool.map(u => {
+    const acts = KH.filter(k => k.owner === u.id).flatMap(k => k.acts.filter(a => a.t === d).map(a => ({ a, k })));
+    return {
+      u, acts,
+      call: acts.filter(x => x.a.type === "call").length, zalo: acts.filter(x => x.a.type === "zalo").length,
+      note: acts.filter(x => x.a.type === "note").length,
+      khach: new Set(acts.map(x => x.k.id)).size,
+      boQuen: KH.filter(k => k.owner === u.id && OPEN_LV.includes(k.level) && quaHan(k) > 0).length
+    };
+  }).sort((a, b) => b.acts.length - a.acts.length);
+
+  const c = el("div", "card");
+  c.innerHTML = `<div class="card-h"><div><h3>Nhật ký chăm sóc ngày ${fmtD(d)}</h3><div class="sub">Số cuộc gọi / tin nhắn / ghi chú của từng sale</div></div></div>`;
+  const wrap = el("div", "tbl-wrap"); const t = el("table");
+  t.innerHTML = `<thead><tr><th>Sale</th><th>Team</th><th style="text-align:right">☎ Gọi</th><th style="text-align:right">💬 Zalo</th><th style="text-align:right">🗒 Ghi chú</th><th style="text-align:right">Tổng</th><th style="text-align:right">Khách đã chạm</th><th style="text-align:right">Bỏ quên</th></tr></thead>`;
+  const tb = el("tbody");
+  rows.forEach(r => {
+    const tr = el("tr");
+    tr.innerHTML = `<td><div class="row" style="gap:8px;flex-wrap:nowrap">${avatar(r.u, 26)}<b>${esc(r.u.name)}</b></div></td>
+      <td class="sub-cell">${esc(teamOf(r.u.team).name)}</td>
+      <td class="tnum" style="text-align:right">${r.call}</td><td class="tnum" style="text-align:right">${r.zalo}</td>
+      <td class="tnum" style="text-align:right">${r.note}</td><td class="tnum" style="text-align:right;font-weight:700">${r.acts.length}</td>
+      <td class="tnum" style="text-align:right">${r.khach}</td>
+      <td class="tnum" style="text-align:right;${r.boQuen ? "color:var(--critical);font-weight:650" : ""}">${r.boQuen}</td>`;
+    tr.onclick = () => { S.nkUser = r.u.id; render(); };
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb); wrap.appendChild(t); c.appendChild(wrap);
+  v.appendChild(c);
+
+  const uid = S.nkUser || (rows[0] && rows[0].u.id);
+  const detail = rows.find(r => r.u.id === uid);
+  if (detail) {
+    const c2 = el("div", "card");
+    c2.innerHTML = `<div class="card-h"><div><h3>Chi tiết ghi chú — ${esc(detail.u.name)}</h3><div class="sub">${detail.acts.length} lượt trong ngày ${fmtD(d)}</div></div></div>`;
+    const b2 = el("div"); b2.style.padding = "4px 14px 12px";
+    if (!detail.acts.length) b2.appendChild(el("div", "empty", "Chưa có ghi chú nào trong ngày này."));
+    detail.acts.forEach(x => {
+      const row = el("div", "row");
+      row.style.cssText = "padding:8px 0;border-bottom:1px solid var(--grid);flex-wrap:nowrap;gap:10px;cursor:pointer";
+      row.innerHTML = `<span style="width:22px">${ACT[x.a.type] || "•"}</span>
+        <div style="min-width:0;flex:1"><div class="name-cell">${esc(x.k.hoTenHV)} <span class="muted" style="font-weight:400">· ${esc(x.k.phone)}</span></div>
+        <div class="sub-cell" style="white-space:normal">${esc(x.a.text)}</div></div>${lvChip(x.k.level)}`;
+      row.onclick = () => openKH(x.k.id, "log");
+      b2.appendChild(row);
+    });
+    c2.appendChild(b2); v.appendChild(c2);
+  }
+}
+
+/* ---------- CÔNG TESTER ---------- */
+function viewCongTester(v) {
+  const y = TODAY.getFullYear(), m = TODAY.getMonth();
+  const list = (myRole() === "tester" ? [me()] : TESTERS).map(u => {
+    const ts = TESTS.filter(t => t.testerId === u.id && inMonth(t.date, y, m));
+    const done = ts.filter(t => t.filledAt);
+    const thieu = ts.filter(t => t.date <= iso(TODAY) && t.status !== "cancel" && t.status !== "absent" && !t.filledAt);
+    const dk = done.filter(t => { const k = khOf(t.khId); return k && k.orders.length; });
+    const cong = done.reduce((s, t) => s + progOf(t.prog).cong, 0);
+    return { u, ts, done, thieu, dk, cong, tl: done.length ? dk.length / done.length : 0 };
+  }).sort((a, b) => b.tl - a.tl);
+
+  const w = el("div", "warnbar info");
+  w.innerHTML = `<span>🧮</span><span>Công tính theo ca đã điền đủ kết quả: <b>IELTS 60.000đ</b> · <b>Giao tiếp &amp; Kids 45.000đ</b>. Ca chưa nhập kết quả không được tính.</span>`;
+  v.appendChild(w);
+
+  const c = el("div", "card");
+  c.innerHTML = `<div class="card-h"><div><h3>Công &amp; hiệu quả tester — tháng ${m + 1}/${y}</h3><div class="sub">Xếp theo tỷ lệ đăng ký / ca test</div></div></div>`;
+  const wrap = el("div", "tbl-wrap"); const t = el("table");
+  t.innerHTML = `<thead><tr><th style="width:34px">#</th><th>Tester</th><th>Mã GV</th><th style="text-align:right">Ca nhận</th><th style="text-align:right">Đã nhập KQ</th><th style="text-align:right">Thiếu KQ</th><th style="text-align:right">Ca ra đơn</th><th style="text-align:right">Tỷ lệ ĐK/test</th><th style="text-align:right">Công tạm tính</th></tr></thead>`;
+  const tb = el("tbody");
+  list.forEach((r, i) => {
+    const tr = el("tr");
+    tr.innerHTML = `<td class="tnum muted">${i + 1}</td>
+      <td><div class="row" style="gap:8px;flex-wrap:nowrap">${avatar(r.u, 26)}<b>${esc(r.u.name)}</b></div></td>
+      <td>${esc(r.u.gv || "")}</td>
+      <td class="tnum" style="text-align:right">${r.ts.length}</td>
+      <td class="tnum" style="text-align:right">${r.done.length}</td>
+      <td class="tnum" style="text-align:right;${r.thieu.length ? "color:var(--critical);font-weight:650" : ""}">${r.thieu.length}</td>
+      <td class="tnum" style="text-align:right">${r.dk.length}</td>
+      <td class="tnum" style="text-align:right;font-weight:650">${pct(r.tl)}</td>
+      <td class="tnum" style="text-align:right;font-weight:700">${fmtVND(r.cong)}</td>`;
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb); wrap.appendChild(t); c.appendChild(wrap);
+  v.appendChild(c);
+}
+/* ============ BÁO CÁO & KPI ============ */
+function viewBC(v) {
+  const tabs = el("div", "tabs");
+  [["phieu", "Phễu & 21 chỉ số"], ["kpi", "KPI team & sale"], ["nguon", "Nguồn & tệp QC"], ["test", "Test đầu vào"]]
+    .forEach(([k, n]) => { const b = el("button", S.repTab === k ? "on" : "", n); b.onclick = () => { S.repTab = k; render(); }; tabs.appendChild(b); });
+  v.appendChild(tabs);
+  ({ phieu: bcPheu, kpi: bcKPI, nguon: bcNguon, test: bcTest })[S.repTab](v);
+}
+
+/* --- 21 chỉ số theo kỳ --- */
+function bcPheu(v) {
+  const y = TODAY.getFullYear(), m = TODAY.getMonth();
+  const d1 = iso(new Date(y, m, 1)), dEnd = iso(new Date(y, m + 1, 0));
+  const list = scope();
+  const ky = [
+    { name: "KỲ I", from: iso(new Date(y, m, 1)), to: iso(new Date(y, m, 10)) },
+    { name: "KỲ II", from: iso(new Date(y, m, 11)), to: iso(new Date(y, m, 20)) },
+    { name: "KỲ III", from: iso(new Date(y, m, 21)), to: dEnd }
+  ];
+  const cols = [{ name: "TỔNG THÁNG", from: d1, to: dEnd }].concat(ky);
+  const data = cols.map(c => ({ c, s: chiSo(list, c.from, c.to) }));
+
+  const c = el("div", "card");
+  c.innerHTML = `<div class="card-h"><div><h3>Báo cáo phễu tháng ${m + 1}/${y}</h3><div class="sub">Cùng bộ chỉ số như file Excel hiện tại — nhưng máy tự cộng từ dữ liệu khách, không ai phải gõ tay</div></div></div>`;
+  const wrap = el("div", "tbl-wrap"); const t = el("table");
+  t.innerHTML = `<thead><tr><th style="min-width:250px">Chỉ số</th>${data.map(d => `<th style="text-align:right">${d.c.name}</th>`).join("")}<th>So chuẩn</th></tr></thead>`;
+  const tb = el("tbody");
+  const R = (label, get, fmt, chuan) => {
+    const tr = el("tr");
+    const vals = data.map(d => get(d.s));
+    tr.innerHTML = `<td class="name-cell">${label}</td>` + vals.map(x => `<td class="tnum" style="text-align:right">${fmt ? fmt(x) : x}</td>`).join("")
+      + `<td>${chuan ? cmpChuan(vals[0], chuan) : ""}</td>`;
+    tb.appendChild(tr);
+  };
+  R("Data mới", s => s.dataMoi);
+  R("Data đúng tệp (PH có con cấp 2,3)", s => s.dungTep);
+  R("Data đúng tỉnh Vua", s => s.dungTinhVua);
+  R("Đặt lịch", s => s.datLich);
+  R("Đến", s => s.den);
+  R("Đăng ký của data trong tháng", s => s.dangKyTrongThang);
+  R("Tổng đăng ký", s => s.dangKy);
+  R("Doanh thu mới", s => s.doanhThu, fmtVND);
+  R("Doanh thu hoàn phí (các đợt sau)", s => s.hoanPhi, fmtVND);
+  R("Doanh thu giới thiệu", s => s.gioiThieu, fmtVND);
+  R("Doanh thu tổng", s => s.doanhThu + s.hoanPhi, fmtVND);
+  R("Data đúng tệp / Tổng data", s => s.r_tep, pct);
+  R("Data đúng tỉnh Vua / Tổng data", s => s.r_vua, pct);
+  R("Đặt lịch / Data", s => s.r_datlich, pct, CHUAN.datlich_data);
+  R("Đến / Đặt lịch", s => s.r_den, pct, CHUAN.den_datlich);
+  R("Đăng ký / Đến", s => s.r_dk, pct, CHUAN.dangky_den);
+  R("TLCĐ chung (Đăng ký / Tổng data)", s => s.tlcd, pct, TLCD.ca_nhan_aim);
+  t.appendChild(tb); wrap.appendChild(t); c.appendChild(wrap); v.appendChild(c);
+
+  const g = el("div", "grid2");
+  const c1 = el("div", "card");
+  c1.innerHTML = `<div class="card-h"><div><h3>Data mới theo tháng</h3></div></div>`;
+  const b1 = el("div", "card-b");
+  b1.appendChild(colChart(monthsBack(6).map(x => {
+    const n = list.filter(k => inMonth(k.createdAt, x.y, x.m)).length;
+    return { label: x.label, v: n, full: `Tháng ${x.m + 1}/${x.y}`, tip: n + " data mới" };
+  }), { labelTop: true, fmtShort: x => x }));
+  c1.appendChild(b1); g.appendChild(c1);
+
+  const c2 = el("div", "card");
+  c2.innerHTML = `<div class="card-h"><div><h3>Doanh thu theo tháng</h3></div></div>`;
+  const b2 = el("div", "card-b");
+  const os = myOrders();
+  b2.appendChild(colChart(monthsBack(6).map(x => {
+    const w = os.filter(o => inMonth(o.createdAt, x.y, x.m));
+    const val = w.reduce((s, o) => s + o.doanhThu, 0);
+    return { label: x.label, v: val, full: `Tháng ${x.m + 1}/${x.y}`, tip: `${fmtVND(val)} · ${w.length} HV` };
+  }), { labelTop: true, fmtShort: fmtM }));
+  c2.appendChild(b2); g.appendChild(c2);
+  v.appendChild(g);
+}
+
+/* --- KPI --- */
+function bcKPI(v) {
+  const y = TODAY.getFullYear(), m = TODAY.getMonth();
+  const d1 = iso(new Date(y, m, 1)), dE = iso(new Date(y, m + 1, 0));
+
+  const teamRows = TEAMS.map(t => {
+    const ks = KH.filter(k => k.team === t.id);
+    const os = ORDERS.filter(o => o.team === t.id && inMonth(o.createdAt, y, m));
+    const rev = os.reduce((s, o) => s + o.doanhThu, 0);
+    const cs = chiSo(ks, d1, dE);
+    return { t, rev, os, cs, pctT: t.target ? rev / t.target : 0 };
+  }).sort((a, b) => b.rev - a.rev);
+
+  const c0 = el("div", "card");
+  c0.innerHTML = `<div class="card-h"><div><h3>KPI theo team — tháng ${m + 1}/${y}</h3><div class="sub">Mục tiêu team: TLCĐ tối thiểu ${pct(TLCD.team_min)} · phấn đấu ${pct(TLCD.team_aim)}</div></div></div>`;
+  const w0 = el("div", "tbl-wrap"); const t0 = el("table");
+  t0.innerHTML = `<thead><tr><th>Team</th><th>Cơ sở</th><th style="text-align:right">Doanh thu</th><th style="width:160px">Tiến độ chỉ tiêu</th><th style="text-align:right">Data</th><th style="text-align:right">Đặt lịch</th><th style="text-align:right">Đến</th><th style="text-align:right">Chốt</th><th style="text-align:right">TLCĐ</th></tr></thead>`;
+  const tb0 = el("tbody");
+  teamRows.forEach(r => {
+    const tr = el("tr");
+    tr.innerHTML = `<td class="name-cell">${esc(r.t.name)}</td><td class="sub-cell">${esc(cosoOf(r.t.coso).name)}</td>
+      <td class="tnum" style="text-align:right;font-weight:700">${fmtM(r.rev)}</td>
+      <td>${pctBar(r.rev, r.t.target)}</td>
+      <td class="tnum" style="text-align:right">${r.cs.dataMoi}</td>
+      <td class="tnum" style="text-align:right">${r.cs.datLich}</td>
+      <td class="tnum" style="text-align:right">${r.cs.den}</td>
+      <td class="tnum" style="text-align:right">${r.cs.dangKy}</td>
+      <td class="tnum" style="text-align:right">${pct(r.cs.tlcd)} ${r.cs.tlcd >= TLCD.team_aim ? "🟢" : r.cs.tlcd >= TLCD.team_min ? "🟡" : "🔴"}</td>`;
+    tb0.appendChild(tr);
+  });
+  t0.appendChild(tb0); w0.appendChild(t0); c0.appendChild(w0); v.appendChild(c0);
+
+  const rows = SALES.map(u => {
+    const ks = KH.filter(k => k.owner === u.id);
+    const os = ORDERS.filter(o => (o.tuVan1 === u.id || o.tuVan2 === u.id) && inMonth(o.createdAt, y, m));
+    const rev = os.reduce((s, o) => s + o.doanhThu * (o.tuVan2 ? (o.tuVan1 === u.id ? o.chia : 100 - o.chia) / 100 : 1), 0);
+    const cs = chiSo(ks, d1, dE);
+    const late = ks.filter(k => OPEN_LV.includes(k.level) && quaHan(k) > 0).length;
+    return { u, rev, cs, late, target: u.target || 0 };
+  }).sort((a, b) => b.rev - a.rev);
+
+  const c1 = el("div", "card");
+  c1.innerHTML = `<div class="card-h"><div><h3>KPI từng sale — tháng ${m + 1}/${y}</h3><div class="sub">Doanh thu đã chia theo tỉ lệ khi đơn có 2 người tư vấn · TLCĐ cá nhân tối thiểu ${pct(TLCD.ca_nhan_min)}, phấn đấu ${pct(TLCD.ca_nhan_aim)}</div></div></div>`;
+  const w1 = el("div", "tbl-wrap"); const t1 = el("table");
+  t1.innerHTML = `<thead><tr><th style="width:32px">#</th><th>Sale</th><th>Team</th><th style="text-align:right">Doanh thu</th><th style="width:150px">Tiến độ</th><th style="text-align:right">Data</th><th style="text-align:right">Đặt lịch</th><th style="text-align:right">Đến</th><th style="text-align:right">Chốt</th><th style="text-align:right">TLCĐ</th><th style="text-align:right">Đặt lịch/Data</th><th style="text-align:right">Quá hạn CS</th></tr></thead>`;
+  const tb1 = el("tbody");
+  rows.forEach((r, i) => {
+    const tr = el("tr");
+    const ok = r.cs.tlcd >= TLCD.ca_nhan_aim ? "🟢" : r.cs.tlcd >= TLCD.ca_nhan_min ? "🟡" : "🔴";
+    tr.innerHTML = `<td class="tnum muted">${i + 1}</td>
+      <td><div class="row" style="gap:8px;flex-wrap:nowrap">${avatar(r.u, 26)}<div><div class="name-cell">${esc(r.u.name)}</div><div class="sub-cell">${esc(roleOf(r.u.role).name)}</div></div></div></td>
+      <td class="sub-cell">${esc(teamOf(r.u.team).name)}</td>
+      <td class="tnum" style="text-align:right;font-weight:650">${fmtM(r.rev)}</td>
+      <td>${pctBar(r.rev, r.target)}</td>
+      <td class="tnum" style="text-align:right">${r.cs.dataMoi}</td>
+      <td class="tnum" style="text-align:right">${r.cs.datLich}</td>
+      <td class="tnum" style="text-align:right">${r.cs.den}</td>
+      <td class="tnum" style="text-align:right">${r.cs.dangKy}</td>
+      <td class="tnum" style="text-align:right">${pct(r.cs.tlcd)} ${ok}</td>
+      <td class="tnum" style="text-align:right">${pct(r.cs.r_datlich)}</td>
+      <td class="tnum" style="text-align:right;${r.late ? "color:var(--critical);font-weight:650" : ""}">${r.late}</td>`;
+    tr.onclick = () => { S.me = r.u.id; drawUser(); S.view = "dash"; render(); };
+    tb1.appendChild(tr);
+  });
+  t1.appendChild(tb1); w1.appendChild(t1); c1.appendChild(w1); v.appendChild(c1);
+}
+
+/* --- nguồn & tệp QC --- */
+function bcNguon(v) {
+  const list = KH;
+  const g = el("div", "grid2");
+
+  const c1 = el("div", "card");
+  c1.innerHTML = `<div class="card-h"><div><h3>Hiệu quả theo tệp quảng cáo</h3><div class="sub">VK đánh 18-65, các mảng khác 35-55</div></div></div>`;
+  const w1 = el("div", "tbl-wrap"); const t1 = el("table");
+  t1.innerHTML = `<thead><tr><th>Tệp</th><th style="text-align:right">Data</th><th style="text-align:right">Đúng tệp</th><th style="text-align:right">Chốt</th><th style="text-align:right">TLCĐ</th><th style="text-align:right">Doanh thu</th></tr></thead>`;
+  const tb1 = el("tbody");
+  TEP.map(tp => {
+    const ks = list.filter(k => k.tep === tp.id);
+    const os = ORDERS.filter(o => { const k = khOf(o.khId); return k && k.tep === tp.id; });
+    return { tp, n: ks.length, tep: ks.filter(k => capOf(k.cap).dungTep).length, w: os.length, rev: os.reduce((s, o) => s + o.doanhThu, 0) };
+  }).sort((a, b) => b.rev - a.rev).forEach(x => {
+    const tr = el("tr");
+    tr.innerHTML = `<td class="name-cell">${esc(x.tp.name)}<div class="sub-cell">${x.tp.tuoi} tuổi</div></td>
+      <td class="tnum" style="text-align:right">${x.n}</td><td class="tnum" style="text-align:right">${x.tep}</td>
+      <td class="tnum" style="text-align:right">${x.w}</td>
+      <td class="tnum" style="text-align:right">${x.n ? pct(x.w / x.n) : "0%"}</td>
+      <td class="tnum" style="text-align:right;font-weight:650">${fmtM(x.rev)}</td>`;
+    tb1.appendChild(tr);
+  });
+  t1.appendChild(tb1); w1.appendChild(t1); c1.appendChild(w1); g.appendChild(c1);
+
+  const c2 = el("div", "card");
+  c2.innerHTML = `<div class="card-h"><div><h3>Hiệu quả theo fanpage</h3><div class="sub">Gắn với MKT phụ trách</div></div></div>`;
+  const w2 = el("div", "tbl-wrap"); const t2 = el("table");
+  t2.innerHTML = `<thead><tr><th>Fanpage</th><th>MKT</th><th style="text-align:right">Data</th><th style="text-align:right">Chốt</th><th style="text-align:right">TLCĐ</th><th style="text-align:right">Doanh thu</th></tr></thead>`;
+  const tb2 = el("tbody");
+  PAGES.map(p => {
+    const ks = list.filter(k => k.page === p.id);
+    const os = ORDERS.filter(o => { const k = khOf(o.khId); return k && k.page === p.id; });
+    return { p, n: ks.length, w: os.length, rev: os.reduce((s, o) => s + o.doanhThu, 0) };
+  }).sort((a, b) => b.rev - a.rev).forEach(x => {
+    const tr = el("tr");
+    tr.innerHTML = `<td class="sub-cell" style="white-space:normal;max-width:260px">${esc(x.p.name)}</td><td>${esc(x.p.mkt)}</td>
+      <td class="tnum" style="text-align:right">${x.n}</td><td class="tnum" style="text-align:right">${x.w}</td>
+      <td class="tnum" style="text-align:right">${x.n ? pct(x.w / x.n) : "0%"}</td>
+      <td class="tnum" style="text-align:right;font-weight:650">${fmtM(x.rev)}</td>`;
+    tb2.appendChild(tr);
+  });
+  t2.appendChild(tb2); w2.appendChild(t2); c2.appendChild(w2); g.appendChild(c2);
+  v.appendChild(g);
+
+  const g2 = el("div", "grid2");
+  const c3 = el("div", "card");
+  c3.innerHTML = `<div class="card-h"><div><h3>Tỉnh Vua vs tỉnh khác</h3><div class="sub">Danh sách tỉnh Vua quý 3/2026 — xét lại theo quý dựa trên CP/DT</div></div></div>`;
+  const b3 = el("div", "card-b");
+  const vua = list.filter(k => laTinhVua(k.tinh)), khac = list.filter(k => !laTinhVua(k.tinh));
+  const wOf = a => ORDERS.filter(o => a.some(k => k.id === o.khId));
+  b3.appendChild(barList([
+    { label: "★ Tỉnh Vua", v: vua.length, color: "var(--good)", tip: `${vua.length} data · ${wOf(vua).length} chốt` },
+    { label: "Tỉnh khác", v: khac.length, color: "var(--b350)", tip: `${khac.length} data · ${wOf(khac).length} chốt` }
+  ], { fmt: x => x }));
+  b3.appendChild(el("div", "note-box", "Danh sách tỉnh Vua hiện tại: " + TINH_VUA_Q3_2026.join(" · ")));
+  c3.appendChild(b3); g2.appendChild(c3);
+
+  const c4 = el("div", "card");
+  c4.innerHTML = `<div class="card-h"><div><h3>Lý do khách không đăng ký</h3></div></div>`;
+  const b4 = el("div", "card-b");
+  const bo = list.filter(k => k.level === "L9");
+  b4.appendChild(barList(LYDO_BO.map(r => ({ label: r, v: bo.filter(k => k.lyDoBo === r).length })).sort((a, b) => b.v - a.v), { fmt: x => x }));
+  c4.appendChild(b4); g2.appendChild(c4);
+  v.appendChild(g2);
+}
+
+/* --- test đầu vào --- */
+function bcTest(v) {
+  const ts = TESTS.filter(t => t.status === "done");
+  const g = el("div", "grid2");
+  const c1 = el("div", "card");
+  c1.innerHTML = `<div class="card-h"><div><h3>Phân bố lớp đề xuất</h3><div class="sub">Quyết định nên mở thêm lớp trình độ nào</div></div></div>`;
+  const b1 = el("div", "card-b");
+  const byLop = {};
+  ts.forEach(t => { const l = t.lopDeXuat || "—"; byLop[l] = (byLop[l] || 0) + 1; });
+  b1.appendChild(barList(Object.entries(byLop).map(([k, v2]) => ({ label: k, v: v2 })).sort((a, b) => b.v - a.v), { fmt: x => x }));
+  c1.appendChild(b1); g.appendChild(c1);
+
+  const c2 = el("div", "card");
+  c2.innerHTML = `<div class="card-h"><div><h3>Ca test theo chương trình</h3></div></div>`;
+  const b2 = el("div", "card-b");
+  b2.appendChild(colChart(PROGRAMS.map(p => {
+    const n = ts.filter(t => t.prog === p.id).length;
+    return { label: p.id, v: n, full: p.name, tip: `${n} ca · công ${fmtVND(p.cong)}/ca` };
+  }), { labelTop: true, fmtShort: x => x }));
+  c2.appendChild(b2); g.appendChild(c2);
+  v.appendChild(g);
+
+  const c3 = el("div", "card");
+  c3.innerHTML = `<div class="card-h"><div><h3>Chất lượng ca test → tỉ lệ ra đơn</h3><div class="sub">Ca test là một mắt xích bán hàng, không chỉ là khâu kỹ thuật</div></div></div>`;
+  const w3 = el("div", "tbl-wrap"); const t3 = el("table");
+  t3.innerHTML = `<thead><tr><th>Chỉ số</th><th style="text-align:right">Giá trị</th></tr></thead>`;
+  const tb3 = el("tbody");
+  const raDon = ts.filter(t => { const k = khOf(t.khId); return k && k.orders.length; });
+  const phDu = ts.filter(t => t.phThamGia), phDuDon = phDu.filter(t => { const k = khOf(t.khId); return k && k.orders.length; });
+  const khongPh = ts.filter(t => !t.phThamGia), khongPhDon = khongPh.filter(t => { const k = khOf(t.khId); return k && k.orders.length; });
+  const mt = ts.filter(t => t.thietBi === "Máy tính"), mtDon = mt.filter(t => { const k = khOf(t.khId); return k && k.orders.length; });
+  const dt2 = ts.filter(t => t.thietBi !== "Máy tính"), dtDon = dt2.filter(t => { const k = khOf(t.khId); return k && k.orders.length; });
+  const R = (l, a, b) => { const tr = el("tr"); tr.innerHTML = `<td class="name-cell">${l}</td><td class="tnum" style="text-align:right"><b>${b ? pct(a / b) : "—"}</b> <span class="sub">(${a}/${b})</span></td>`; tb3.appendChild(tr); };
+  R("Tỉ lệ ra đơn sau ca test", raDon.length, ts.length);
+  R("Có phụ huynh dự ca test", phDuDon.length, phDu.length);
+  R("Không có phụ huynh dự", khongPhDon.length, khongPh.length);
+  R("Khách test bằng máy tính", mtDon.length, mt.length);
+  R("Khách test bằng điện thoại / máy tính bảng", dtDon.length, dt2.length);
+  t3.appendChild(tb3); w3.appendChild(t3); c3.appendChild(w3);
+  c3.appendChild(el("div", "note-box", "Nếu tỉ lệ ra đơn khi có phụ huynh dự cao hơn hẳn, sale nên đặt điều kiện mời phụ huynh cùng vào ca test."));
+  v.appendChild(c3);
+}
+/* ============ HỒ SƠ KHÁCH HÀNG & PHIẾU TEST ============ */
+function closeDrawer() { S.open = null; $("#drawer").classList.remove("on"); $("#scrim").classList.remove("on"); }
+
+function openKH(id, tab) {
+  const k = khOf(id); if (!k) return;
+  S.open = id; S.drTab = tab || "info";
+  const d = $("#drawer"); d.innerHTML = "";
+  const u = userOf(k.owner), g = golden(k.id);
+  const T = k.tests.map(testOf).filter(Boolean).sort((a, b) => b.date.localeCompare(a.date))[0];
+  const O = k.orders.map(orderOf).filter(Boolean)[0];
+
+  const h = el("div", "dr-h");
+  h.innerHTML = `<div style="flex:1;min-width:0">
+    <div style="font-size:17px;font-weight:700">${esc(k.hoTenHV)}</div>
+    <div class="sub">${k.id} · ${esc(capOf(k.cap).name)}${k.lop ? " · " + esc(k.lop) : ""} · ${esc(k.tinh)}${laTinhVua(k.tinh) ? " ★" : ""} · vào ${fmtD(k.createdAt)}</div>
+    <div class="row" style="margin-top:8px">${lvChip(k.level)}
+      ${capOf(k.cap).dungTep ? '<span class="chip ok">đúng tệp</span>' : '<span class="chip">ngoài tệp</span>'}
+      ${k.zaloOA ? '<span class="chip ok">Zalo OA</span>' : '<span class="chip dg">chưa Zalo OA</span>'}
+      ${g && g.alive ? `<span class="chip wn count72">⏳ còn ${g.left}h vàng</span>` : ""}
+      ${O ? `<span class="chip ok">${O.code} · ${fmtVND(O.doanhThu)}</span>` : ""}</div></div>`;
+  const x = el("button", "btn sm", "✕"); x.onclick = closeDrawer; h.appendChild(x);
+  d.appendChild(h);
+
+  const body = el("div", "dr-b");
+  const tabs = el("div", "tabs");
+  const tabList = [["info", "Thông tin"], ["log", "Chăm sóc"], ["test", "Test đầu vào"], ["deal", "Chốt đơn"]];
+  if (O) tabList.push(["duyet", "Kế toán"], ["lop", "Xếp lớp & CSKH"]);
+  tabList.forEach(([kk, n]) => { const b = el("button", S.drTab === kk ? "on" : "", n); b.onclick = () => openKH(id, kk); tabs.appendChild(b); });
+  body.appendChild(tabs);
+
+  const quick = el("div", "row");
+  const sl = el("select"); LEVELS.forEach(l => sl.appendChild(new Option(l.id + " " + l.name, l.id))); sl.value = k.level;
+  sl.onchange = () => moveLevel(k.id, sl.value);
+  const so = el("select"); so.appendChild(new Option("Chưa phân bổ", ""));
+  SALES.forEach(s => so.appendChild(new Option(s.name, s.id))); so.value = k.owner || "";
+  so.onchange = () => { k.owner = so.value || null; if (k.owner) { k.team = userOf(k.owner).team; k.coso = userOf(k.owner).coso; k.kho = 0; } k.acts.push({ t: iso(TODAY), type: "sys", text: "Đổi người phụ trách sang " + (k.owner ? userOf(k.owner).name : "chưa phân bổ"), by: S.me }); toast("Đã đổi phụ trách"); render(); openKH(id, S.drTab); };
+  quick.innerHTML = `<span class="sub">Trạng thái</span>`;
+  quick.appendChild(sl); quick.appendChild(el("span", "sub", "Sale")); quick.appendChild(so);
+  body.appendChild(quick);
+
+  if (S.drTab === "info") drTabInfo(body, k, u);
+  if (S.drTab === "log") drTabLog(body, k);
+  if (S.drTab === "test") drTabTest(body, k, T);
+  if (S.drTab === "deal") drTabDeal(body, k, T, O);
+  if (S.drTab === "duyet" && O) drTabDuyet(body, k, O);
+  if (S.drTab === "lop" && O) drTabLop(body, k, O);
+
+  d.appendChild(body);
+  d.classList.add("on"); $("#scrim").classList.add("on");
+}
+
+/* ---- tab Thông tin ---- */
+function drTabInfo(body, k, u) {
+  const kv = el("div", "kv");
+  const dup = dupPhones().has(k.phone);
+  kv.innerHTML = `
+    <div class="k">Điện thoại</div><div class="tnum"><b>${esc(k.phone)}</b> ${dup ? '<span class="chip wn">⚠ trùng SĐT</span>' : ""}</div>
+    <div class="k">Phụ huynh</div><div>${esc(k.hoTenPH || "—")}</div>
+    <div class="k">Ngày sinh</div><div>${fmtD(k.ngaySinh)}</div>
+    <div class="k">Email</div><div>${esc(k.email || "—")}</div>
+    <div class="k">Tỉnh / TP</div><div>${esc(k.tinh)} ${laTinhVua(k.tinh) ? '<span class="chip ok">★ tỉnh Vua</span>' : ""}</div>
+    <div class="k">Cấp học · Lớp</div><div>${esc(capOf(k.cap).name)} · ${esc(k.lop || "—")}</div>
+    <div class="k">Chương trình</div><div>${esc(progOf(k.chuongTrinh).name)}</div>
+    <div class="k">Mục tiêu</div><div>${esc(k.mucTieu)}</div>
+    <div class="k">Fanpage</div><div>${esc(pageOf(k.page).name)}</div>
+    <div class="k">Tệp QC · Nguồn</div><div>${esc(tepOf(k.tep).name)} · ${esc(srcOf(k.source).name)}</div>
+    <div class="k">Phụ trách</div><div>${k.owner ? esc(u.name) + " · " + esc(teamOf(k.team).name) : "—"}</div>
+    <div class="k">Chăm sóc gần nhất</div><div>${fmtD(k.lastAct)} (${daysSince(k.lastAct)} ngày trước)</div>
+    ${k.lyDoBo ? `<div class="k">Lý do bỏ</div><div style="color:var(--critical)">${esc(k.lyDoBo)}</div>` : ""}`;
+  body.appendChild(kv);
+
+  const zc = el("div", "card"); const zb = el("div", "card-b row");
+  const cb = el("input"); cb.type = "checkbox"; cb.checked = !!k.zaloOA;
+  cb.onchange = () => { k.zaloOA = cb.checked ? 1 : 0; toast(k.zaloOA ? "Đã tích Zalo OA" : "Đã bỏ tích Zalo OA"); render(); openKH(k.id, "info"); };
+  const lb = el("label", "row"); lb.style.gap = "8px"; lb.appendChild(cb);
+  lb.appendChild(el("span", null, "<b>Đã quan tâm &amp; chat với Zalo OA Anh ngữ ALES</b>"));
+  zb.appendChild(lb);
+  zb.appendChild(el("div", "sub", "Bắt buộc trước khi đặt lịch test"));
+  zc.appendChild(zb); body.appendChild(zc);
+
+  const c = el("div", "card"); const cbx = el("div", "card-b");
+  cbx.appendChild(el("div", null, "<b>Việc tiếp theo</b>"));
+  if (k.next) {
+    const row = el("div", "row"); row.style.marginTop = "8px";
+    const dt = el("input"); dt.type = "date"; dt.value = k.next.date;
+    dt.onchange = () => { k.next.date = dt.value; toast("Đã đổi lịch"); render(); };
+    const ty = el("select"); [["call", "☎ Gọi điện"], ["zalo", "💬 Nhắn Zalo"], ["meet", "🤝 Hẹn gặp"], ["test", "📝 Ca test"]].forEach(o => ty.appendChild(new Option(o[1], o[0])));
+    ty.value = k.next.type; ty.onchange = () => { k.next.type = ty.value; render(); };
+    const nt = el("input"); nt.type = "text"; nt.value = k.next.note; nt.style.flex = "1"; nt.style.minWidth = "180px";
+    nt.onchange = () => k.next.note = nt.value;
+    row.appendChild(dt); row.appendChild(ty); row.appendChild(nt);
+    const del = el("button", "btn sm dg", "Bỏ"); del.onclick = () => { k.next = null; render(); openKH(k.id, "info"); };
+    row.appendChild(del); cbx.appendChild(row);
+    if (quaHan(k) > 0) cbx.appendChild(el("div", "sub", `<span style="color:var(--critical)">Đã quá hạn ${quaHan(k)} ngày.</span>`));
+  } else {
+    const b = el("button", "btn sm", "+ Đặt lịch chăm sóc"); b.style.marginTop = "8px";
+    b.onclick = () => { k.next = { date: iso(dAdd(TODAY, 1)), type: "call", note: "Theo dõi tiếp" }; render(); openKH(k.id, "info"); };
+    cbx.appendChild(b);
+  }
+  c.appendChild(cbx); body.appendChild(c);
+}
+
+/* ---- tab Chăm sóc ---- */
+const MAU5 = `1. Thông tin học viên:
+2. Trình độ:
+3. Mục tiêu:
+4. Định hướng:
+5. Độ tiềm năng:  /10`;
+function drTabLog(body, k) {
+  const c = el("div", "card"); const cb = el("div", "card-b");
+  const ta = el("textarea"); ta.rows = 6; ta.style.width = "100%"; ta.placeholder = "Nội dung vừa trao đổi với khách…";
+  const row0 = el("div", "row");
+  const bm = el("button", "btn sm", "Chèn mẫu 5 mục");
+  bm.onclick = () => { ta.value = MAU5; ta.focus(); };
+  row0.appendChild(bm); row0.appendChild(el("span", "sub", "Mẫu chuẩn ALES: thông tin HV · trình độ · mục tiêu · định hướng · độ tiềm năng"));
+  cb.appendChild(row0); cb.appendChild(ta);
+  const row = el("div", "row"); row.style.marginTop = "8px";
+  const ty = el("select"); [["call", "☎ Gọi điện"], ["zalo", "💬 Zalo/SMS"], ["meet", "🤝 Gặp trực tiếp"], ["note", "🗒 Ghi chú"]].forEach(o => ty.appendChild(new Option(o[1], o[0])));
+  const nx = el("input"); nx.type = "date"; nx.value = iso(dAdd(TODAY, 2));
+  const save = el("button", "btn pri sm", "Lưu &amp; hẹn gọi lại");
+  save.onclick = () => {
+    if (!ta.value.trim()) { toast("Nhập nội dung trước đã"); return; }
+    k.acts.push({ t: iso(TODAY), type: ty.value, text: ta.value.trim(), by: S.me });
+    k.lastAct = iso(TODAY);
+    if (OPEN_LV.includes(k.level)) k.next = { date: nx.value, type: "call", note: "Liên hệ lại theo hẹn" };
+    toast("Đã lưu"); render(); openKH(k.id, "log");
+  };
+  row.appendChild(ty); row.appendChild(el("span", "sub", "Hẹn lại")); row.appendChild(nx); row.appendChild(el("div", "grow")); row.appendChild(save);
+  cb.appendChild(row); c.appendChild(cb); body.appendChild(c);
+
+  const tl = el("div");
+  k.acts.slice().reverse().forEach(a => {
+    const i = el("div", "tl-i");
+    i.innerHTML = `<div class="tl-ic">${ACT[a.type] || "•"}</div>
+      <div><div style="white-space:pre-wrap">${esc(a.text)}</div><div class="tl-m">${fmtD(a.t)} · ${a.by ? esc(userOf(a.by).name) : "Hệ thống"}</div></div>`;
+    tl.appendChild(i);
+  });
+  body.appendChild(tl);
+}
+
+/* ---- tab Test ---- */
+function drTabTest(body, k, T) {
+  const all = k.tests.map(testOf).filter(Boolean);
+  if (!all.length) {
+    const c = el("div", "card"); const cb = el("div", "card-b");
+    cb.innerHTML = `<div class="sub">Khách chưa có lịch test đầu vào.</div>`;
+    const b = el("button", "btn pri", "+ Đặt lịch test"); b.style.marginTop = "10px";
+    b.onclick = () => formDatLich(k, body);
+    cb.appendChild(b); c.appendChild(cb); body.appendChild(c);
+    if (!k.zaloOA) body.appendChild(el("div", "warnbar dg", "⚠ Khách chưa quan tâm Zalo OA — bắt buộc phải có trước khi đặt lịch test."));
+    return;
+  }
+  all.sort((a, b) => b.date.localeCompare(a.date)).forEach(t => {
+    const c = el("div", "card"); const cb = el("div", "card-b");
+    cb.innerHTML = `<div class="row" style="justify-content:space-between">
+      <div><b>${fmtD(t.date)} · ${t.gio}</b> <span class="sub">${esc(progOf(t.prog).name)}</span></div>
+      <span class="chip ${t.status === "done" ? "ok" : t.status === "booked" ? "" : "dg"}">${t.status === "done" ? "đã test" : t.status === "booked" ? "đã đặt lịch" : t.status === "absent" ? "không đến" : "hủy"}</span></div>
+      <div class="sub" style="margin-top:6px">Tester: ${esc(userOf(t.testerId).name)} ${userOf(t.testerId).gv || ""} · Thiết bị: ${esc(t.thietBi)} · PH ${t.phThamGia ? "có" : "không"} dự</div>`;
+    if (t.status === "done") {
+      cb.appendChild(el("div", "note-box", `<b>Kết quả:</b> ${esc(t.lopDeXuat || "")}${t.prog === "IELTS" ? ` · Speaking band ${t.band} · Writing ${t.wrBand} · Reading ${t.reBand} · Listening ${t.liBand}` : ` · tổng ${t.total} điểm`}`));
+    }
+    const r = el("div", "row"); r.style.marginTop = "8px";
+    const b1 = el("button", "btn sm", t.status === "done" ? "Xem phiếu kết quả" : "Mở ca test"); b1.onclick = () => openTest(t.id);
+    r.appendChild(b1);
+    if (t.status === "done") { const b2 = el("button", "btn pri sm", "✨ Gợi ý chốt đơn"); b2.onclick = () => openTest(t.id, "ai"); r.appendChild(b2); }
+    cb.appendChild(r);
+    c.appendChild(cb); body.appendChild(c);
+  });
+  const b = el("button", "btn sm", "+ Đặt thêm lịch test"); b.onclick = () => formDatLich(k, body); body.appendChild(b);
+}
+function formDatLich(k, body) {
+  if (!k.zaloOA) { toast("Chưa tích Zalo OA — bắt buộc trước khi đặt lịch"); return; }
+  const c = el("div", "card"); const cb = el("div", "card-b");
+  cb.innerHTML = `<b>Đặt lịch test đầu vào</b><div class="sub">Ca cách nhau 50 phút · tối T2–T6, sáng T7 &amp; CN</div>`;
+  const r1 = el("div", "row"); r1.style.marginTop = "8px";
+  const dt = el("input"); dt.type = "date"; dt.value = iso(dAdd(TODAY, 1));
+  const gio = el("select");
+  const fillGio = () => { gio.innerHTML = ""; caTrongNgay(new Date(dt.value)).forEach(g => gio.appendChild(new Option(g, g))); };
+  fillGio(); dt.onchange = fillGio;
+  const pr = el("select"); PROGRAMS.forEach(p => pr.appendChild(new Option(p.name, p.id)));
+  pr.value = k.chuongTrinh;
+  const tb = el("select"); THIETBI.forEach(x => tb.appendChild(new Option(x, x)));
+  const ts = el("select"); TESTERS.forEach(t => ts.appendChild(new Option(t.name + " · " + t.gv, t.id)));
+  r1.appendChild(el("span", "sub", "Ngày")); r1.appendChild(dt);
+  r1.appendChild(el("span", "sub", "Ca")); r1.appendChild(gio);
+  cb.appendChild(r1);
+  const r2 = el("div", "row"); r2.style.marginTop = "8px";
+  r2.appendChild(el("span", "sub", "Chương trình")); r2.appendChild(pr);
+  r2.appendChild(el("span", "sub", "Thiết bị")); r2.appendChild(tb);
+  cb.appendChild(r2);
+  const r3 = el("div", "row"); r3.style.marginTop = "8px";
+  r3.appendChild(el("span", "sub", "Tester")); r3.appendChild(ts);
+  const warn = el("div", "sub"); r3.appendChild(warn);
+  const check = () => {
+    const trung = TESTS.filter(t => t.testerId === ts.value && t.date === dt.value && t.gio === gio.value && t.status !== "cancel");
+    warn.innerHTML = trung.length ? '<span style="color:var(--critical)">⚠ Tester đã có ca vào giờ này</span>' : '<span style="color:var(--good-ink)">✔ Ca trống</span>';
+  };
+  [dt, gio, ts].forEach(e => e.addEventListener("change", check)); check();
+  cb.appendChild(r3);
+  const save = el("button", "btn pri", "Đặt lịch &amp; báo tester"); save.style.marginTop = "10px";
+  save.onclick = () => {
+    const T = {
+      id: "TS" + (5000 + TESTS.length), khId: k.id, testerId: ts.value, prog: pr.value, date: dt.value, gio: gio.value,
+      thietBi: tb.value, status: "booked", scores: {}, comments: {}, gvNhanXet: {}, wr: {}, re: null, li: null,
+      total: null, band: null, lopDeXuat: null, video: "", phThamGia: 0, hrPhut: null, filledAt: null, saleId: k.owner || S.me
+    };
+    TESTS.push(T); k.tests.push(T.id);
+    k.acts.push({ t: iso(TODAY), type: "test", text: `Đặt lịch test ${fmtD(T.date)} ${T.gio} · ${userOf(T.testerId).name}. Tester đã nhận thông báo.`, by: S.me });
+    if (LEVELS.findIndex(l => l.id === k.level) < 4) k.level = "L5";
+    k.next = { date: T.date, type: "test", note: "Nhắc khách đi test đúng giờ" };
+    toast("Đã đặt lịch — tester nhận được ca trong mục “Ca của tôi”");
+    render(); openKH(k.id, "test");
+  };
+  cb.appendChild(save); c.appendChild(cb); body.appendChild(c); c.scrollIntoView({ behavior: "smooth" });
+}
+
+/* ---- tab Chốt đơn ---- */
+function drTabDeal(body, k, T, O) {
+  const g = golden(k.id);
+  if (g && g.alive) body.appendChild(el("div", "warnbar", `<span>⏳</span><span>Còn <b class="count72">${g.left} giờ</b> trong mốc 72h kể từ ca test ${fmtD(g.test.date)} — đăng ký trong khung này khách được <b>tai nghe + gia sư bổ trợ</b> theo gói.</span>`));
+  else if (g) body.appendChild(el("div", "warnbar dg", `<span>⏳</span><span>Đã quá 72h kể từ ca test — quà tặng theo gói không còn áp dụng.</span>`));
+
+  if (O) {
+    const C = courseOf(O.code) || {};
+    const thu = O.dots.filter(d => d.daThu).reduce((s, d) => s + d.soTien, 0);
+    const c = el("div", "card"); const cb = el("div", "card-b");
+    cb.innerHTML = `<div class="row" style="justify-content:space-between"><b>${O.id} · ${O.code}</b>
+      <span class="chip ${O.trangThai === "daDuyet" ? "ok" : "wn"}">${O.trangThai === "daDuyet" ? "đã duyệt" : "chờ kế toán duyệt"}</span></div>
+      <div class="sub">${esc(C.nhom || "")} — ${esc(C.name || "")}</div>
+      <div class="kv" style="margin-top:10px">
+        <div class="k">Doanh số (giá gốc)</div><div class="tnum">${fmtVND(O.giaGoc)}</div>
+        <div class="k">Chiết khấu</div><div class="tnum">${fmtVND(O.chietKhau)} ${O.lechGia ? '<span class="chip wn">lệch mức chuẩn</span>' : ""}</div>
+        <div class="k">Doanh thu</div><div class="tnum"><b>${fmtVND(O.doanhThu)}</b></div>
+        <div class="k">Đã thu / còn lại</div><div class="tnum">${fmtVND(thu)} / <b>${fmtVND(O.doanhThu - thu)}</b></div>
+        <div class="k">Hình thức</div><div>${esc(O.hinhThuc)}${O.mpos ? ` · khách nộp ${fmtVND(O.doanhThu / (1 - MPOS_FEE))} (đã cộng phí ${(MPOS_FEE * 100).toFixed(1)}%)` : ""}</div>
+        <div class="k">Người tư vấn 1</div><div>${esc(userOf(O.tuVan1).name)}</div>
+        <div class="k">Người tư vấn 2</div><div>${O.tuVan2 ? esc(userOf(O.tuVan2).name) + ` · chia ${O.chia}/${100 - O.chia}` : "—"}</div>
+        <div class="k">Số giờ</div><div>${C.gio}h · GVVN ${C.gvvn}h · GVNN ${C.gvnn}h</div>
+        <div class="k">Quà theo gói</div><div>${C.gs} buổi gia sư bổ trợ · ${C.tainghe} tai nghe gắn mic</div></div>`;
+    const dotBox = el("div"); dotBox.style.marginTop = "10px";
+    dotBox.innerHTML = "<b>Các đợt học phí</b>";
+    O.dots.forEach((dd, i) => {
+      const row = el("div", "row"); row.style.cssText = "padding:6px 0;border-bottom:1px solid var(--grid)";
+      row.innerHTML = `<span style="width:60px">Đợt ${i + 1}</span><span class="tnum" style="width:100px">${fmtD(dd.ngay)}</span>
+        <b class="tnum" style="width:130px">${fmtVND(dd.soTien)}</b>
+        ${dd.daThu ? '<span class="chip ok">đã thu</span>' : dd.ngay < iso(TODAY) ? '<span class="chip dg">quá hạn</span>' : '<span class="chip wn">chưa thu</span>'}`;
+      if (!dd.daThu) { const b = el("button", "btn ok sm", "Ghi nhận đã thu"); b.onclick = () => { dd.daThu = dd.soTien; toast("Đã ghi nhận"); render(); openKH(k.id, "deal"); }; row.appendChild(el("div", "grow")); row.appendChild(b); }
+      dotBox.appendChild(row);
+    });
+    cb.appendChild(dotBox);
+    const pr = el("button", "btn pri"); pr.style.marginTop = "10px"; pr.innerHTML = "🖨 In hoá đơn 2 liên";
+    pr.onclick = () => inHoaDon(O);
+    cb.appendChild(pr);
+    c.appendChild(cb); body.appendChild(c);
+    return;
+  }
+
+  /* chưa có đơn → form chốt */
+  const c = el("div", "card"); const cb = el("div", "card-b");
+  cb.innerHTML = `<b>Chốt đơn cho ${esc(k.hoTenHV)}</b><div class="sub">Chọn mã khoá — hệ thống tự điền học phí, chiết khấu, số giờ và quà tặng</div>`;
+  const sel = el("select"); sel.style.marginTop = "8px"; sel.style.width = "100%";
+  sel.appendChild(new Option("— Chọn khoá học —", ""));
+  let lastNhom = "";
+  COURSES.forEach(C => {
+    if (C.nhom !== lastNhom) { const og = document.createElement("optgroup"); og.label = C.nhom; sel.appendChild(og); lastNhom = C.nhom; }
+    sel.lastChild.appendChild(new Option(`${C.code} — ${C.name} · ${fmtVND(C.uudai)}`, C.code));
+  });
+  cb.appendChild(sel);
+  const info = el("div"); info.style.marginTop = "10px"; cb.appendChild(info);
+  const r2 = el("div", "row"); r2.style.marginTop = "8px";
+  const dot = el("select"); [1, 2, 3, 4].forEach(n => dot.appendChild(new Option(n + " đợt", n)));
+  const ht = el("select"); ["Chuyển khoản", "Tiền mặt", "MPOS"].forEach(x => ht.appendChild(new Option(x, x)));
+  const tv2 = el("select"); tv2.appendChild(new Option("Không có người tư vấn 2", ""));
+  SALES.forEach(s => tv2.appendChild(new Option(s.name, s.id)));
+  r2.appendChild(el("span", "sub", "Số đợt")); r2.appendChild(dot);
+  r2.appendChild(el("span", "sub", "Hình thức")); r2.appendChild(ht);
+  cb.appendChild(r2);
+  const r3 = el("div", "row"); r3.style.marginTop = "8px";
+  r3.appendChild(el("span", "sub", "Người tư vấn 2")); r3.appendChild(tv2);
+  cb.appendChild(r3);
+  const upd = () => {
+    const C = courseOf(sel.value);
+    if (!C) { info.innerHTML = ""; return; }
+    const mpos = ht.value === "MPOS";
+    info.innerHTML = `<div class="kv">
+      <div class="k">Doanh số gốc</div><div class="tnum">${fmtVND(C.goc)}</div>
+      <div class="k">Chiết khấu</div><div class="tnum">${fmtVND(C.goc - C.uudai)}</div>
+      <div class="k">Doanh thu</div><div class="tnum"><b>${fmtVND(C.uudai)}</b></div>
+      ${mpos ? `<div class="k">Khách nộp qua MPOS</div><div class="tnum">${fmtVND(C.uudai / (1 - MPOS_FEE))}</div>` : ""}
+      <div class="k">Thời lượng</div><div>${C.gio}h · GVVN ${C.gvvn}h · GVNN ${C.gvnn}h</div>
+      <div class="k">Quà theo gói</div><div>${C.gs} buổi gia sư bổ trợ · ${C.tainghe} tai nghe${golden(k.id) && golden(k.id).alive ? ' <span class="chip ok">còn trong 72h</span>' : ' <span class="chip dg">ngoài 72h</span>'}</div></div>`;
+  };
+  sel.onchange = upd; ht.onchange = upd;
+  const save = el("button", "btn pri"); save.style.marginTop = "12px"; save.textContent = "💰 Xác nhận chốt đơn";
+  save.onclick = () => {
+    const C = courseOf(sel.value); if (!C) { toast("Chọn khoá học trước"); return; }
+    const n = +dot.value, dt = C.uudai, dots = []; let con = dt;
+    for (let i = 0; i < n; i++) { const so = i === n - 1 ? con : Math.round(dt / n / 1e6) * 1e6; con -= so; dots.push({ ngay: iso(dAdd(TODAY, i * 30)), soTien: so, daThu: i === 0 ? so : 0 }); }
+    const O2 = {
+      id: "DH" + (3900 + ORDERS.length + 60), khId: k.id, code: C.code, giaGoc: C.goc, uuDai: C.uudai, doanhThu: dt,
+      chietKhau: C.goc - dt, lechGia: false, tuVan1: k.owner || S.me, tuVan2: tv2.value || null, chia: tv2.value ? 50 : 100,
+      hinhThuc: ht.value, mpos: ht.value === "MPOS", dots, createdAt: iso(TODAY), coso: k.coso, team: k.team,
+      trangThai: "choDuyet", bills: [], hopDong: "Chưa gửi", xepLop: "Cần order giáo viên", gv: null, lichHoc: "", ngayKG: null, cskh: null,
+      qua: { taiNghe: { tang: C.tainghe, diaChi: "", daGiao: 0 }, giaSu: C.gs, gvnn: 6, ontap: 6 }
+    };
+    ORDERS.push(O2); k.orders.push(O2.id); k.level = "L8"; k.next = null;
+    k.acts.push({ t: iso(TODAY), type: "money", text: `Chốt đơn ${O2.id} — ${C.code} · ${fmtVND(dt)} · ${n} đợt. Đã chuyển kế toán duyệt và vào hàng đợi xếp lớp.`, by: S.me });
+    toast("Đã chốt đơn — kế toán và HR đã nhận việc");
+    render(); openKH(k.id, "deal");
+  };
+  cb.appendChild(save);
+  const bo = el("button", "btn dg"); bo.style.cssText = "margin-top:12px;margin-left:8px"; bo.textContent = "Đánh dấu không thành công";
+  bo.onclick = () => { const r = prompt("Lý do khách không đăng ký:", LYDO_BO[0]); if (!r) return; k.lyDoBo = r; moveLevel(k.id, "L9"); openKH(k.id, "info"); };
+  cb.appendChild(bo);
+  c.appendChild(cb); body.appendChild(c);
+}
+
+/* ---- tab Kế toán ---- */
+function drTabDuyet(body, k, O) {
+  const c = el("div", "card"); const cb = el("div", "card-b");
+  cb.innerHTML = `<b>Kế toán duyệt đơn ${O.id}</b><div class="sub">Kiểm đủ 7 mục mới được duyệt</div>`;
+  O.check = O.check || {};
+  const box = el("div"); box.style.marginTop = "8px";
+  CHECKLIST.forEach(item => {
+    const row = el("label", "row"); row.style.cssText = "padding:6px 0;border-bottom:1px solid var(--grid);gap:9px;cursor:pointer";
+    const cb2 = el("input"); cb2.type = "checkbox"; cb2.checked = !!O.check[item] || O.trangThai === "daDuyet";
+    cb2.onchange = () => { O.check[item] = cb2.checked; upd(); };
+    row.appendChild(cb2); row.appendChild(el("span", null, esc(item)));
+    box.appendChild(row);
+  });
+  cb.appendChild(box);
+  const billRow = el("div", "row"); billRow.style.marginTop = "10px";
+  billRow.innerHTML = `<span class="sub">Ảnh bill chuyển khoản</span>${O.bills.length ? `<span class="chip ok">${O.bills.length} ảnh</span>` : '<span class="chip dg">chưa có</span>'}`;
+  const addB = el("button", "btn sm", "+ Đính kèm bill");
+  addB.onclick = () => { O.bills.push("bill-" + Date.now() + ".jpg"); toast("Đã đính kèm (bản demo)"); render(); openKH(k.id, "duyet"); };
+  billRow.appendChild(addB); cb.appendChild(billRow);
+
+  const hdRow = el("div", "row"); hdRow.style.marginTop = "10px";
+  const hd = el("select"); ["Chưa gửi", "Đã gửi - chờ ký", "Nhận HĐ giấy"].forEach(x => hd.appendChild(new Option(x, x)));
+  hd.value = O.hopDong; hd.onchange = () => { O.hopDong = hd.value; toast("Đã cập nhật hợp đồng"); render(); };
+  hdRow.appendChild(el("span", "sub", "Hợp đồng")); hdRow.appendChild(hd);
+  cb.appendChild(hdRow);
+
+  const act = el("div", "row"); act.style.marginTop = "12px";
+  const ok = el("button", "btn ok", "✔ Duyệt đơn");
+  const pr = el("button", "btn", "🖨 In hoá đơn"); pr.onclick = () => inHoaDon(O);
+  const upd = () => { ok.disabled = CHECKLIST.some(i => !O.check[i]) || !O.bills.length || O.trangThai === "daDuyet"; };
+  ok.onclick = () => { O.trangThai = "daDuyet"; k.acts.push({ t: iso(TODAY), type: "sys", text: "Kế toán đã duyệt đơn " + O.id, by: S.me }); toast("Đã duyệt đơn"); render(); openKH(k.id, "duyet"); };
+  act.appendChild(ok); act.appendChild(pr);
+  cb.appendChild(act); upd();
+  if (O.trangThai === "daDuyet") cb.appendChild(el("div", "note-box", "Đơn đã được duyệt."));
+  c.appendChild(cb); body.appendChild(c);
+}
+
+/* ---- tab Xếp lớp & CSKH ---- */
+function drTabLop(body, k, O) {
+  const cho = daysSince(O.createdAt);
+  const c = el("div", "card"); const cb = el("div", "card-b");
+  cb.innerHTML = `<div class="row" style="justify-content:space-between"><b>Xếp lớp — ${O.code}</b>
+    <span class="chip ${O.xepLop === "Đã xếp lớp" ? "ok" : cho > 7 ? "dg" : "wn"}">${esc(O.xepLop)} · chờ ${cho} ngày</span></div>
+    <div class="sub">KPI của HR: xếp lớp trong dưới 7 ngày kể từ ngày đăng ký</div>`;
+  const r = el("div", "row"); r.style.marginTop = "10px";
+  const gv = el("select"); gv.appendChild(new Option("— Chọn giáo viên —", ""));
+  GIAOVIEN.forEach(g => gv.appendChild(new Option(g, g))); gv.value = O.gv || "";
+  const lh = el("input"); lh.type = "text"; lh.value = O.lichHoc; lh.placeholder = "VD: T3 + T5 : 19h50–21h50"; lh.style.minWidth = "220px";
+  const kg = el("input"); kg.type = "date"; kg.value = O.ngayKG || "";
+  r.appendChild(el("span", "sub", "Giáo viên")); r.appendChild(gv);
+  cb.appendChild(r);
+  const r2 = el("div", "row"); r2.style.marginTop = "8px";
+  r2.appendChild(el("span", "sub", "Lịch học")); r2.appendChild(lh);
+  r2.appendChild(el("span", "sub", "Khai giảng")); r2.appendChild(kg);
+  cb.appendChild(r2);
+  const r3 = el("div", "row"); r3.style.marginTop = "8px";
+  const cs = el("select"); cs.appendChild(new Option("— CSKH phụ trách —", ""));
+  usersBy("cskh").forEach(u => cs.appendChild(new Option(u.name + " · " + (u.cskh || ""), u.id))); cs.value = O.cskh || "";
+  r3.appendChild(el("span", "sub", "CSKH")); r3.appendChild(cs);
+  cb.appendChild(r3);
+  const save = el("button", "btn pri"); save.style.marginTop = "10px"; save.textContent = "Lưu & xác nhận đã xếp lớp";
+  save.onclick = () => {
+    if (!gv.value || !lh.value || !kg.value) { toast("Cần đủ giáo viên, lịch học và ngày khai giảng"); return; }
+    O.gv = gv.value; O.lichHoc = lh.value; O.ngayKG = kg.value; O.cskh = cs.value || null; O.xepLop = "Đã xếp lớp";
+    k.acts.push({ t: iso(TODAY), type: "sys", text: `HR xếp lớp: GV ${O.gv} · ${O.lichHoc} · khai giảng ${fmtD(O.ngayKG)}. Đã bàn giao CSKH.`, by: S.me });
+    toast("Đã xếp lớp — CSKH nhận bàn giao"); render(); openKH(k.id, "lop");
+  };
+  cb.appendChild(save);
+  c.appendChild(cb); body.appendChild(c);
+
+  /* AI định hướng giảng dạy */
+  const T = k.tests.map(testOf).filter(t => t && t.status === "done").sort((a, b) => b.date.localeCompare(a.date))[0];
+  if (T) body.appendChild(aiBox("Định hướng giảng dạy cho giáo viên", aiGiangDay(k, T, O), T));
+
+  /* quà tặng */
+  const c2 = el("div", "card"); const cb2 = el("div", "card-b");
+  const C = courseOf(O.code) || {};
+  cb2.innerHTML = `<b>Quà tặng theo gói ${O.code}</b><div class="sub">Do gói học quyết định — chỉ áp dụng khi đăng ký trong 72h kể từ ca test</div>`;
+  const q = [["Tai nghe gắn mic", C.tainghe + " chiếc", O.qua.taiNghe.daGiao], ["Gia sư bổ trợ nhóm", C.gs + " buổi", null], ["Học với GVNN", O.qua.gvnn + " buổi", null], ["Ôn thi học kỳ", O.qua.ontap + " buổi", null]];
+  const box = el("div"); box.style.marginTop = "8px";
+  q.forEach(([n, v2, giao]) => {
+    const row = el("div", "row"); row.style.cssText = "padding:7px 0;border-bottom:1px solid var(--grid)";
+    row.innerHTML = `<span style="flex:1"><b>${n}</b></span><span class="tnum">${v2}</span>`;
+    if (giao !== null) {
+      row.appendChild(giao ? el("span", "chip ok", "đã giao") : (() => { const b = el("button", "btn ok sm", "Đánh dấu đã giao"); b.onclick = () => { O.qua.taiNghe.daGiao = 1; toast("Đã ghi nhận"); render(); openKH(k.id, "lop"); }; return b; })());
+    }
+    box.appendChild(row);
+  });
+  cb2.appendChild(box);
+  const dc = el("input"); dc.type = "text"; dc.placeholder = "Địa chỉ chuyển tai nghe"; dc.value = O.qua.taiNghe.diaChi; dc.style.cssText = "width:100%;margin-top:8px";
+  dc.onchange = () => O.qua.taiNghe.diaChi = dc.value;
+  cb2.appendChild(dc);
+  c2.appendChild(cb2); body.appendChild(c2);
+}
+
+/* ---- in hoá đơn ---- */
+function inHoaDon(O) {
+  const k = khOf(O.khId) || {}; const C = courseOf(O.code) || {};
+  const thu = O.dots.filter(d => d.daThu).reduce((s, d) => s + d.soTien, 0);
+  const w = window.open("", "_blank");
+  const f = n => new Intl.NumberFormat("vi-VN").format(Math.round(n));
+  w.document.write(`<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>${O.id}</title>
+  <style>body{font-family:system-ui,sans-serif;padding:26px;color:#111}
+  h1{text-align:center;font-size:20px;margin:18px 0}
+  table{width:100%;border-collapse:collapse;margin-top:12px}td,th{border:1px solid #999;padding:7px 9px;font-size:13px}
+  .hdr{display:flex;gap:14px;align-items:flex-start}.no{border:0;padding:0}
+  .k{display:grid;grid-template-columns:1fr 1fr;gap:0}.k td{border:1px solid #ccc}
+  .sig{display:flex;justify-content:space-between;margin-top:34px;text-align:center;font-size:12.5px}
+  .sig div{flex:1}.sig b{display:block}</style></head><body>
+  <div class="hdr"><div style="width:78px;height:44px;background:#c8102e;color:#fff;display:grid;place-items:center;font-weight:800;border-radius:5px">ALES</div>
+  <div><b style="font-size:15px">CÔNG TY TNHH ANH NGỮ ALES QUỐC TẾ - HỆ THỐNG ANH NGỮ ALES</b><br>
+  ĐCGD: 227 Hoàng Văn Thái, Khương Trung, Thanh Xuân, Hà Nội<br>ĐT: 024 7770 9888 - Website: http://ales.edu.vn</div>
+  <div style="margin-left:auto;font-size:12.5px">Liên số: 1/2</div></div>
+  <h1>HOÁ ĐƠN THANH TOÁN - ${O.id}</h1>
+  <table class="k"><tr><td><b>Kính gửi:</b> ${k.hoTenPH || k.hoTenHV}</td><td><b>Người tư vấn 1:</b> ${userOf(O.tuVan1).name}</td></tr>
+  <tr><td><b>Địa chỉ:</b> ${k.tinh || ""}</td><td><b>Địa chỉ:</b> [${O.coso}] ${teamOf(O.team).name}</td></tr>
+  <tr><td><b>Tel:</b> ${k.phone || ""} - <b>Email:</b> ${k.email || "Chưa cập nhật"}</td><td><b>Ngày gửi:</b> ${fmtD(iso(TODAY))}</td></tr>
+  <tr><td><b>Người nhận:</b> ${k.hoTenPH || k.hoTenHV} - SĐT: ${k.phone || ""}</td><td><b>Hình thức thanh toán:</b> ${O.hinhThuc}</td></tr></table>
+  <table><tr><th>STT</th><th>Mã SP</th><th>Tên sản phẩm</th><th>ĐVT</th><th>SL</th><th>Giá</th><th>CK(%)</th><th>CK(VNĐ)</th><th>Thành tiền</th></tr>
+  <tr><td>1</td><td>${O.code}</td><td>${C.nhom || ""} — ${C.name || ""}, GVVN ${C.gvvn}H - GVNN ${C.gvnn}H</td><td>Khoá học</td><td>1.00</td>
+  <td style="text-align:right">${f(O.giaGoc)}</td><td style="text-align:right">0.00</td><td style="text-align:right">${f(O.chietKhau)}</td><td style="text-align:right">${f(O.doanhThu)}</td></tr>
+  <tr><td colspan="8"><b>Tổng cộng</b></td><td style="text-align:right"><b>${f(O.doanhThu)}</b></td></tr>
+  <tr><td colspan="8">Đã thanh toán</td><td style="text-align:right">${f(thu)}</td></tr>
+  <tr><td colspan="8">Còn lại</td><td style="text-align:right"><b>${f(O.doanhThu - thu)}</b></td></tr></table>
+  <p><b>Điều khoản đi kèm:</b></p><p>1. Hoàn thành học phí trước ngày: ${O.dots.length ? fmtD(O.dots[O.dots.length - 1].ngay) : "……………"}</p>
+  <p>2. Mã: ${O.code}</p>
+  <p style="font-style:italic">Chú ý: Số tiền đặt cọc và học phí đã đóng không được hoàn lại trong bất kỳ trường hợp nào.</p>
+  <div class="sig"><div><b>Người nộp tiền</b>(Ký, họ tên)</div><div><b>Người tư vấn 2</b>(Ký, họ tên)</div><div><b>Người lập phiếu</b>(Ký, họ tên)</div>
+  <div><b>Kế toán</b>(Ký, họ tên)</div><div><b>Quản lý tài chính</b>(Ký, họ tên)</div><div><b>Giám đốc</b>(Ký, họ tên)</div></div>
+  </body></html>`);
+  w.document.close(); setTimeout(() => w.print(), 350);
+}
+/* ============ PHIẾU CA TEST — chấm điểm & kết quả ============ */
+const GV_MUC = ["Phát âm", "Ngữ pháp", "Từ vựng", "Độ trôi chảy", "Tính cách & sự tiếp thu", "Độ phù hợp với phương pháp online 1 kèm 1"];
+const shortName = n => String(n).trim().split(/\s+/).slice(-2).join(" ");
+const vnName = s => { const p = String(s).split("/"); return (p[1] || p[0]).trim(); };
+
+function openTest(id, tab) {
+  const T = testOf(id); if (!T) return;
+  const k = khOf(T.khId) || {};
+  S.open = T.khId; S.testTab = tab || S.testTab || "cham";
+  const d = $("#drawer"); d.innerHTML = "";
+  const R = RUBRIC[T.prog];
+
+  const h = el("div", "dr-h");
+  h.innerHTML = `<div style="flex:1;min-width:0">
+    <div style="font-size:17px;font-weight:700">Ca test · ${esc(k.hoTenHV || "")}</div>
+    <div class="sub">${fmtD(T.date)} · ${T.gio} · ${esc(progOf(T.prog).name)} · Tester ${esc(userOf(T.testerId).name)} ${userOf(T.testerId).gv || ""}</div>
+    <div class="row" style="margin-top:8px">
+      <span class="chip ${T.status === "done" ? "ok" : T.status === "booked" ? "" : "dg"}">${T.status === "done" ? "đã test" : T.status === "booked" ? "chưa test" : T.status === "absent" ? "không đến" : "hủy"}</span>
+      <span class="chip">${esc(T.thietBi)}</span>
+      ${T.filledAt ? '<span class="chip ok">đã nhập kết quả · tính công ' + fmtVND(progOf(T.prog).cong) + "</span>" : '<span class="chip dg">chưa nhập kết quả</span>'}
+      ${T.lopDeXuat ? `<span class="chip ok">${esc(T.lopDeXuat)}</span>` : ""}</div></div>`;
+  const x = el("button", "btn sm", "✕"); x.onclick = closeDrawer; h.appendChild(x);
+  d.appendChild(h);
+
+  const body = el("div", "dr-b");
+  const tabs = el("div", "tabs");
+  [["cham", "Chấm điểm"], ["phieu", "Phiếu gửi phụ huynh"], ["ai", "✨ Gợi ý chốt cho sale"]]
+    .forEach(([kk, n]) => { const b = el("button", S.testTab === kk ? "on" : "", n); b.onclick = () => openTest(id, kk); tabs.appendChild(b); });
+  body.appendChild(tabs);
+
+  const back = el("button", "btn sm", "← Về hồ sơ khách"); back.onclick = () => openKH(T.khId, "test");
+  body.appendChild(back);
+
+  if (S.testTab === "cham") tabCham(body, T, k, R);
+  if (S.testTab === "phieu") tabPhieu(body, T, k, R);
+  if (S.testTab === "ai") body.appendChild(aiBox("Định hướng cuộc chốt cho sale", aiChot(k, T), T));
+
+  d.appendChild(body); d.classList.add("on"); $("#scrim").classList.add("on");
+}
+
+/* ---- chấm điểm ---- */
+function tabCham(body, T, k, R) {
+  const info = el("div", "card"); const ib = el("div", "card-b row");
+  const st = el("select"); [["booked", "Chưa test"], ["done", "Đã test"], ["absent", "Không đến"], ["cancel", "Hủy"]].forEach(o => st.appendChild(new Option(o[1], o[0])));
+  st.value = T.status; st.onchange = () => { T.status = st.value; render(); openTest(T.id, "cham"); };
+  const tb = el("select"); THIETBI.forEach(x => tb.appendChild(new Option(x, x))); tb.value = T.thietBi; tb.onchange = () => T.thietBi = tb.value;
+  const ph = el("input"); ph.type = "checkbox"; ph.checked = !!T.phThamGia; ph.onchange = () => T.phThamGia = ph.checked ? 1 : 0;
+  const hr = el("input"); hr.type = "number"; hr.value = T.hrPhut || 60; hr.style.width = "78px"; hr.onchange = () => T.hrPhut = +hr.value;
+  ib.appendChild(el("span", "sub", "Trạng thái")); ib.appendChild(st);
+  ib.appendChild(el("span", "sub", "Thiết bị")); ib.appendChild(tb);
+  const lb = el("label", "row"); lb.style.gap = "6px"; lb.appendChild(ph); lb.appendChild(el("span", "sub", "PH tham gia"));
+  ib.appendChild(lb);
+  ib.appendChild(el("span", "sub", "Thời lượng (phút)")); ib.appendChild(hr);
+  info.appendChild(ib); body.appendChild(info);
+
+  const vd = el("div", "card"); const vb = el("div", "card-b");
+  vb.innerHTML = `<b>Link video ca test</b><div class="sub">MS Teams tự ghi hình và gửi vào nhóm — dán link vào đây, sale và quản lý xem lại được ngay trên hồ sơ khách</div>`;
+  const vi = el("input"); vi.type = "text"; vi.value = T.video || ""; vi.placeholder = "https://teams.microsoft.com/rec/…"; vi.style.cssText = "width:100%;margin-top:8px";
+  vi.onchange = () => { T.video = vi.value; toast("Đã lưu link video"); };
+  vb.appendChild(vi); vd.appendChild(vb); body.appendChild(vd);
+
+  /* bảng tiêu chí */
+  const c = el("div", "card"); const cb = el("div", "card-b");
+  cb.innerHTML = `<b>Bảng điểm chi tiết — ${esc(progOf(T.prog).name)}</b>
+    <div class="sub">Chọn điểm, nhận xét tự điền theo ngân hàng nhận xét của ALES và tự chèn tên học viên. Sửa lại được nếu muốn.</div>`;
+  let tong = 0;
+  R.groups.forEach((g, gi) => {
+    cb.appendChild(el("div", null, `<div style="margin-top:12px;font-weight:700;color:var(--s1)">${esc(g.group)}</div>`));
+    g.criteria.forEach((cr, ci) => {
+      const key = gi + "-" + ci;
+      const row = el("div", "rub-row");
+      const left = el("div");
+      left.innerHTML = `<div style="font-size:12.8px">${esc(cr.name)}</div>`;
+      const ta = el("textarea"); ta.rows = 2; ta.style.cssText = "width:100%;margin-top:6px;font-size:12.5px";
+      ta.value = T.comments[key] || "";
+      ta.onchange = () => T.comments[key] = ta.value;
+      left.appendChild(ta);
+      const seg = el("div", "seg");
+      const mx = R.max;
+      for (let s = 1; s <= mx; s++) {
+        const b = el("button", T.scores[key] === s ? "on" : "", String(s));
+        b.onclick = () => {
+          T.scores[key] = s;
+          T.comments[key] = (cr.levels[String(s)] || "").replace(/^Học viên/, shortName(k.hoTenHV));
+          tinhLai(T, R, k); render(); openTest(T.id, "cham");
+        };
+        seg.appendChild(b);
+      }
+      const right = el("div"); right.appendChild(seg);
+      row.appendChild(left); row.appendChild(right);
+      cb.appendChild(row);
+      tong += T.scores[key] || 0;
+    });
+  });
+  const n = R.groups.reduce((s, g) => s + g.criteria.length, 0);
+  const daCham = Object.keys(T.scores).length;
+  cb.appendChild(el("div", "note-box", `<b>Tổng điểm: ${tong} / ${n * R.max}</b> — đã chấm ${daCham}/${n} tiêu chí${T.lopDeXuat ? ` → <b>${esc(T.lopDeXuat)}</b>` : ""}`));
+  c.appendChild(cb); body.appendChild(c);
+
+  /* IELTS: 3 kỹ năng còn lại */
+  if (T.prog === "IELTS") {
+    const c2 = el("div", "card"); const b2 = el("div", "card-b");
+    b2.innerHTML = `<b>Writing · Reading · Listening</b><div class="sub">Writing chấm 4 tiêu chí thang 2.0–4.5 (trung bình cộng, làm tròn .25→.5 / .75→1.0). Reading &amp; Listening nhập số câu đúng trên 20.</div>`;
+    WRITING_CRIT.forEach(w => {
+      const row = el("div", "rub-row");
+      row.appendChild(el("div", null, `<div style="font-size:12.8px">${esc(w)}</div>`));
+      const seg = el("div", "seg");
+      WRITING_SCALE.forEach(s => {
+        const b = el("button", T.wr[w] === s ? "on" : "", s.toFixed(1));
+        b.onclick = () => { T.wr[w] = s; tinhLai(T, RUBRIC.IELTS, k); render(); openTest(T.id, "cham"); };
+        seg.appendChild(b);
+      });
+      const r2 = el("div"); r2.appendChild(seg); row.appendChild(r2);
+      b2.appendChild(row);
+    });
+    const rl = el("div", "row"); rl.style.marginTop = "10px";
+    const re = el("input"); re.type = "number"; re.min = 0; re.max = 20; re.value = T.re == null ? "" : T.re; re.style.width = "80px";
+    const li = el("input"); li.type = "number"; li.min = 0; li.max = 20; li.value = T.li == null ? "" : T.li; li.style.width = "80px";
+    re.onchange = () => { T.re = re.value === "" ? null : +re.value; tinhLai(T, RUBRIC.IELTS, k); render(); openTest(T.id, "cham"); };
+    li.onchange = () => { T.li = li.value === "" ? null : +li.value; tinhLai(T, RUBRIC.IELTS, k); render(); openTest(T.id, "cham"); };
+    rl.appendChild(el("span", "sub", "Reading — số câu đúng /20")); rl.appendChild(re);
+    rl.appendChild(el("span", "sub", "Listening — số câu đúng /20")); rl.appendChild(li);
+    b2.appendChild(rl);
+    b2.appendChild(el("div", "note-box", `Speaking band <b>${T.band ?? "—"}</b> · Writing <b>${T.wrBand ?? "—"}</b> · Reading <b>${T.reBand ?? "—"}</b> · Listening <b>${T.liBand ?? "—"}</b><br>
+      Điều kiện lớp IELTS 4.0+: không kỹ năng nào dưới 4.0`));
+    c2.appendChild(b2); body.appendChild(c2);
+  }
+
+  /* nhận xét giáo viên */
+  const c3 = el("div", "card"); const b3 = el("div", "card-b");
+  b3.innerHTML = `<b>Nhận xét của giáo viên test</b><div class="sub">Phần cá nhân hoá — thứ phụ huynh đọc kỹ nhất</div>`;
+  GV_MUC.forEach(m => {
+    const row = el("div"); row.style.marginTop = "8px";
+    row.innerHTML = `<div class="sub"><b>${esc(m)}</b></div>`;
+    if (m === GV_MUC[5]) {
+      const s = el("select"); ["", "Rất phù hợp", "Phù hợp", "Cần cân nhắc"].forEach(o => s.appendChild(new Option(o || "— chọn —", o)));
+      s.value = T.gvNhanXet[m] || ""; s.onchange = () => T.gvNhanXet[m] = s.value; row.appendChild(s);
+    } else {
+      const ta = el("textarea"); ta.rows = 2; ta.style.cssText = "width:100%;margin-top:4px;font-size:12.5px";
+      ta.placeholder = "Điểm mạnh: …  Điểm cần cải thiện: …"; ta.value = T.gvNhanXet[m] || "";
+      ta.onchange = () => T.gvNhanXet[m] = ta.value; row.appendChild(ta);
+    }
+    b3.appendChild(row);
+  });
+  c3.appendChild(b3); body.appendChild(c3);
+
+  /* lưu */
+  const thieu = [];
+  if (daCham < n) thieu.push(`còn ${n - daCham} tiêu chí chưa chấm`);
+  if (T.prog === "IELTS") { if (Object.keys(T.wr).length < 4) thieu.push("chưa chấm đủ Writing"); if (T.re == null) thieu.push("thiếu Reading"); if (T.li == null) thieu.push("thiếu Listening"); }
+  if (!T.video) thieu.push("chưa dán link video");
+  if (!GV_MUC.slice(0, 5).every(m => (T.gvNhanXet[m] || "").trim())) thieu.push("chưa đủ 5 mục nhận xét");
+  const save = el("button", "btn pri"); save.textContent = "💾 Lưu kết quả & tính công";
+  save.disabled = thieu.length > 0;
+  save.onclick = () => {
+    tinhLai(T, RUBRIC[T.prog], k); T.status = "done"; T.filledAt = iso(TODAY);
+    k.acts.push({ t: iso(TODAY), type: "test", text: `Tester nhập kết quả: ${T.lopDeXuat}. Sale nhận được gợi ý chốt.`, by: S.me });
+    k.lastAct = iso(TODAY);
+    if (["L1", "L2", "L3", "L4", "L5"].includes(k.level)) k.level = "L6";
+    k.next = { date: iso(TODAY), type: "call", note: "Gửi phiếu kết quả + chốt gói trong 72h vàng" };
+    toast("Đã lưu — ca này được tính công " + fmtVND(progOf(T.prog).cong));
+    render(); openTest(T.id, "phieu");
+  };
+  const wrap2 = el("div"); wrap2.appendChild(save);
+  if (thieu.length) wrap2.appendChild(el("div", "warnbar dg", `<span>⚠</span><span>Chưa lưu được: ${thieu.join(" · ")}. Quy định ALES: ca điền thiếu không được tính công.</span>`));
+  body.appendChild(wrap2);
+}
+
+function tinhLai(T, R, k) {
+  const n = R.groups.reduce((s, g) => s + g.criteria.length, 0);
+  const tong = Object.values(T.scores).reduce((a, b) => a + b, 0);
+  T.total = tong;
+  if (T.prog === "IELTS") {
+    T.band = spBand(tong);
+    const ws = Object.values(T.wr);
+    T.wrBand = ws.length === 4 ? roundW(ws.reduce((a, b) => a + b, 0) / 4) : null;
+    T.reBand = T.re == null ? null : rlBand(T.re);
+    T.liBand = T.li == null ? null : rlBand(T.li);
+    T.lopDeXuat = xepLopIELTS(T.band, T.wrBand, T.reBand, T.liBand);
+  } else {
+    const x = xepLopKhac(T.prog, tong); T.trinhDo = x.level; T.lopDeXuat = x.lop;
+  }
+}
+
+/* ---- phiếu gửi phụ huynh ---- */
+function tabPhieu(body, T, k, R) {
+  if (T.status !== "done" && !T.filledAt) { body.appendChild(el("div", "empty", "Chưa có kết quả — vào tab Chấm điểm trước.")); return; }
+  const c = el("div", "card"); const cb = el("div", "card-b");
+  const ten = shortName(k.hoTenHV);
+  cb.innerHTML = `<div style="text-align:center">
+      <div style="font-size:11px;letter-spacing:1px;color:var(--muted)">10 NĂM⁺ ${T.prog.startsWith("KIDS") ? "TIẾNG ANH TRẺ EM" : T.prog === "GT" ? "TIẾNG ANH GIAO TIẾP" : "IELTS"} TRỰC TUYẾN 1 KÈM 1</div>
+      <h2 style="margin:6px 0 2px;font-size:16px">PHIẾU KẾT QUẢ TEST ĐẦU VÀO &amp; XẾP LỚP</h2>
+      <div class="sub">ALES ONLINE xin gửi kết quả và tổng quan chương trình học tập dành riêng cho ${esc(ten)}</div></div>
+    <div class="kv" style="margin-top:12px">
+      <div class="k">Họ và tên học viên</div><div><b>${esc(k.hoTenHV)}</b></div>
+      <div class="k">Ngày test</div><div>${fmtD(T.date)} · ${T.gio}</div>
+      <div class="k">Giáo viên test</div><div>${esc(userOf(T.testerId).name)}</div>
+      <div class="k">Chương trình học</div><div>${esc(progOf(T.prog).name)}</div>
+      <div class="k">Tổng điểm</div><div><b>${T.total} / ${R.groups.reduce((s, g) => s + g.criteria.length, 0) * R.max}</b></div>
+      <div class="k">Kết quả xếp lớp</div><div><b style="color:var(--s1)">${esc(T.lopDeXuat || "")}</b></div></div>`;
+  const tbl = el("table"); tbl.style.marginTop = "12px";
+  tbl.innerHTML = `<thead><tr><th>Nhóm tiêu chí</th><th>Tiêu chí</th><th style="text-align:center">Điểm</th><th>Nhận xét</th></tr></thead>`;
+  const tb2 = el("tbody");
+  R.groups.forEach((g, gi) => g.criteria.forEach((cr, ci) => {
+    const key = gi + "-" + ci;
+    const tr = el("tr");
+    tr.innerHTML = `<td class="sub-cell" style="white-space:normal;max-width:130px">${ci === 0 ? esc(g.group) : ""}</td>
+      <td class="sub-cell" style="white-space:normal;max-width:180px">${esc(cr.name)}</td>
+      <td style="text-align:center"><b>${T.scores[key] ?? "—"}</b></td>
+      <td class="sub-cell" style="white-space:normal">${esc(T.comments[key] || "")}</td>`;
+    tb2.appendChild(tr);
+  }));
+  tbl.appendChild(tb2); cb.appendChild(tbl);
+
+  if (T.prog === "IELTS") {
+    cb.appendChild(el("div", "note-box", `<b>Bốn kỹ năng:</b> Speaking <b>${T.band ?? "—"}</b> · Writing <b>${T.wrBand ?? "—"}</b> · Reading <b>${T.reBand ?? "—"}</b> (${T.re ?? "—"}/20) · Listening <b>${T.liBand ?? "—"}</b> (${T.li ?? "—"}/20)`));
+  }
+  const nx = el("div"); nx.style.marginTop = "12px";
+  nx.innerHTML = `<b>Nhận xét của giáo viên test</b>`;
+  GV_MUC.forEach(m => { if ((T.gvNhanXet[m] || "").trim()) nx.appendChild(el("div", "note-box", `<b>${esc(m)}:</b> ${esc(T.gvNhanXet[m])}`)); });
+  cb.appendChild(nx);
+
+  const lt = el("div"); lt.style.marginTop = "12px";
+  lt.innerHTML = `<b>Lộ trình học đề xuất — 4 giai đoạn</b>`;
+  const GD = T.prog.startsWith("KIDS")
+    ? [["LÀM QUEN & XÂY PHẢN XẠ", "Âm và mặt chữ, bảng chữ cái, các âm cơ bản"], ["TỪ VỰNG & MẪU CÂU THEO CHỦ ĐỀ", "Mở rộng từ vựng theo bộ chủ đề chuẩn Cambridge"], ["GIAO TIẾP & PHẢN XẠ TỰ NHIÊN", "Trả lời trọn câu, kể lại nội dung theo tranh"], ["KIỂM TRA CHUẨN CAMBRIDGE", "Làm quen dạng bài Starters / Movers / Flyers"]]
+    : [["XÂY NỀN TẢNG", "Ngữ pháp – Từ vựng – Phát âm"], ["DẠNG BÀI IELTS", "Làm quen 4 dạng bài Nghe – Nói – Đọc – Viết"], ["LUYỆN ĐỀ TỪNG PHẦN", "Chiến thuật chuyên sâu từng dạng đề"], ["FULL TEST", "Luyện đề căn đúng thời gian thi"]];
+  GD.forEach(([n, ct], i) => lt.appendChild(el("div", "note-box", `<b>GIAI ĐOẠN 0${i + 1} — ${n}</b><br>${ct}`)));
+  cb.appendChild(lt);
+
+  const mh = el("div"); mh.style.marginTop = "12px";
+  mh.innerHTML = `<b>Mô hình ALES 03 kèm 01</b>
+    <div class="note-box">01 giáo viên Việt Nam — tăng band, sửa lỗi sai theo đúng lỗi ghi nhận trong bài test hôm nay</div>
+    <div class="note-box">01 giáo viên nước ngoài — phản xạ Nghe – Nói, môi trường quốc tế</div>
+    <div class="note-box">01 giáo viên chủ nhiệm lớp — báo cáo tổng kết chặng 15 buổi/lần, cầu nối với phụ huynh</div>`;
+  cb.appendChild(mh);
+  if (T.video) cb.appendChild(el("div", "note-box", `🎥 Video ca test: <a href="${esc(T.video)}" target="_blank">mở link</a> — toàn bộ buổi học sau này cũng được ghi hình và lưu trữ để phụ huynh xem lại.`));
+  const pr = el("button", "btn pri"); pr.style.marginTop = "12px"; pr.textContent = "🖨 In / gửi phụ huynh";
+  pr.onclick = () => window.print();
+  cb.appendChild(pr);
+  c.appendChild(cb); body.appendChild(c);
+}
+
+/* ============ GỢI Ý (AI) ============ */
+function aiBox(title, html, T) {
+  const box = el("div", "ai-box");
+  box.innerHTML = `<h4>✨ ${esc(title)}</h4>${html}
+    <div class="sub" style="margin-top:10px;border-top:1px dashed var(--border);padding-top:8px">
+      Bản dựng thử đang sinh gợi ý bằng công thức từ chính dữ liệu ca test. Khi nối API AI miễn phí (Google Gemini), phần này sẽ do AI viết lại thành lời tư vấn tự nhiên và bám sát từng khách.</div>`;
+  return box;
+}
+function aiChot(k, T) {
+  const g = golden(k.id);
+  const R = RUBRIC[T.prog];
+  const arr = [];
+  R.groups.forEach((gr, gi) => gr.criteria.forEach((cr, ci) => arr.push({ g: gr.group, c: cr.name, s: T.scores[gi + "-" + ci] || 0 })));
+  const yeu = arr.slice().sort((a, b) => a.s - b.s).slice(0, 3);
+  const manh = arr.slice().sort((a, b) => b.s - a.s).slice(0, 2);
+  const goiY = deXuatGoi(k, T);
+  const phanDoi = [
+    ["“Để chị bàn với gia đình đã”", "Chốt mốc thời gian cụ thể: “Em giữ suất quà tặng đến " + (g && g.alive ? `${g.left} giờ nữa` : "hết hôm nay") + " thôi ạ, chị cho em xin phản hồi trước lúc đó nhé.”"],
+    ["“Học phí cao quá”", "Quy về đơn giá mỗi giờ học 1 kèm 1, và nhắc gói đã gồm " + (courseOf(goiY.code) || {}).gs + " buổi gia sư bổ trợ + tai nghe, tính ra rẻ hơn học nhóm mà con được kèm riêng."],
+    ["“Con em bận, sợ không theo được”", "Đưa lịch rảnh của con vào phần xếp lớp — ALES xếp lớp theo lịch của học viên, không phải ngược lại."]
+  ];
+  return `
+  <div class="kv">
+    <div class="k">Kết quả test</div><div><b>${esc(T.lopDeXuat || "")}</b>${T.prog === "IELTS" ? ` · Speaking ${T.band} · Writing ${T.wrBand ?? "—"} · Reading ${T.reBand ?? "—"} · Listening ${T.liBand ?? "—"}` : ` · ${T.total} điểm`}</div>
+    <div class="k">Mục tiêu gia đình</div><div>${esc(k.mucTieu)}</div>
+    <div class="k">Thời gian vàng</div><div>${g ? (g.alive ? `<b style="color:var(--s2)">còn ${g.left} giờ</b> — quà tặng vẫn áp dụng` : "đã hết — không còn quà tặng") : "chưa test"}</div>
+  </div>
+  <div style="margin-top:10px"><b>1. Gói nên chào</b>
+    <div class="note-box"><b>${goiY.code} — ${esc(goiY.ten)}</b><br>
+    Doanh số ${fmtVND(goiY.goc)} → ưu đãi còn <b>${fmtVND(goiY.uudai)}</b> · ${goiY.gio}h (GVVN ${goiY.gvvn}h + GVNN ${goiY.gvnn}h)<br>
+    Quà nếu chốt trong 72h: ${goiY.gs} buổi gia sư bổ trợ + ${goiY.tainghe} tai nghe gắn mic.<br>
+    <span class="sub">${esc(goiY.lyDo)}</span></div></div>
+  <div style="margin-top:10px"><b>2. Điểm nên nhấn khi nói chuyện</b>
+    <div class="note-box">Khen trước — con đang tốt ở: ${manh.map(m => esc(vnName(m.c))).join(" · ")}.<br>
+    Sau đó chỉ ra đúng 3 chỗ hổng: <b>${yeu.map(m => esc(vnName(m.c))).join(" · ")}</b> — đây chính là thứ lộ trình sẽ vá, và cũng là lý do cần kèm 1-1 thay vì học nhóm.</div></div>
+  <div style="margin-top:10px"><b>3. Phụ huynh có thể phản đối gì</b>
+    ${phanDoi.map(([q, a]) => `<div class="note-box"><b>${esc(q)}</b><br>${esc(a)}</div>`).join("")}</div>
+  <div style="margin-top:10px"><b>4. Việc cần làm ngay</b>
+    <div class="note-box">Gửi phiếu kết quả test qua Zalo trong hôm nay${T.video ? " kèm link video ca test để phụ huynh xem con học thật thế nào" : ""}.
+    ${T.phThamGia ? "Phụ huynh đã dự ca test — nhắc lại đúng những gì cô giáo nhận xét lúc đó." : "Phụ huynh chưa dự ca test — nên gọi kể lại chi tiết, hoặc mời xem video."}</div></div>`;
+}
+function deXuatGoi(k, T) {
+  const isKid = T.prog.startsWith("KIDS"), isGT = T.prog === "GT";
+  let code, lyDo;
+  if (isKid) {
+    const lv = T.trinhDo || "Starters";
+    code = lv === "Starters" ? "VPK1H_M96" : lv === "Movers" ? "VPK1H_F96" : "VPK1H_F50";
+    lyDo = `Con đang ở mức ${lv} — nên chọn gói đưa con lên bậc kế tiếp thay vì học lại cùng bậc.`;
+  } else if (isGT) {
+    code = (T.trinhDo === "A1") ? "VP105_A2" : "VP105";
+    lyDo = `Đầu vào ${T.trinhDo || "PreA1"} — gói 105h có giáo viên nước ngoài giúp bật phản xạ nhanh hơn gói 70h.`;
+  } else {
+    const b = T.band || 2;
+    if (b < 2.5) { code = "MI42"; lyDo = "Speaking dưới 2.5 — thuộc nhóm mất gốc, cần gói xây nền từ đầu, cam kết 4.0–4.5 là mốc thực tế."; }
+    else if (b < 3.5) { code = "MI5"; lyDo = "Đã có phản xạ cơ bản, đủ sức đặt mục tiêu 5.0–5.5 nếu học đủ 170h."; }
+    else if (b < 4.5) { code = "I45"; lyDo = "Nền tảng khá — gói 60h đủ để đưa lên 5.0–5.5, chi phí nhẹ, dễ chốt."; }
+    else { code = "I46"; lyDo = "Đầu vào tốt, nên đẩy thẳng mục tiêu 6.0–6.5 để kịp mốc thi."; }
+    if ((k.mucTieu || "").match(/du học|học bổng/i)) lyDo += " Gia đình có mục tiêu du học nên band cần cao hơn mặt bằng — có thể chào lên một bậc gói.";
+  }
+  const C = courseOf(code) || COURSES[0];
+  return { code: C.code, ten: C.nhom + " — " + C.name, goc: C.goc, uudai: C.uudai, gio: C.gio, gvvn: C.gvvn, gvnn: C.gvnn, gs: C.gs, tainghe: C.tainghe, lyDo };
+}
+function aiGiangDay(k, T, O) {
+  const R = RUBRIC[T.prog];
+  const arr = [];
+  R.groups.forEach((gr, gi) => gr.criteria.forEach((cr, ci) => arr.push({ c: cr.name, s: T.scores[gi + "-" + ci] || 0, nx: T.comments[gi + "-" + ci] || "" })));
+  const yeu = arr.slice().sort((a, b) => a.s - b.s).slice(0, 3);
+  const C = courseOf(O.code) || {};
+  return `
+  <div class="kv">
+    <div class="k">Học viên</div><div><b>${esc(k.hoTenHV)}</b> · ${esc(capOf(k.cap).name)}${k.lop ? " · " + esc(k.lop) : ""} · ${esc(k.tinh)}</div>
+    <div class="k">Xếp lớp</div><div>${esc(T.lopDeXuat || "")}</div>
+    <div class="k">Gói học</div><div>${O.code} · ${C.gio}h (GVVN ${C.gvvn}h + GVNN ${C.gvnn}h)</div>
+    <div class="k">Mục tiêu gia đình</div><div>${esc(k.mucTieu)}</div>
+  </div>
+  <div style="margin-top:10px"><b>Ba việc cần làm ngay trong 3 buổi đầu</b>
+    ${yeu.map((y, i) => `<div class="note-box"><b>${i + 1}. ${esc(vnName(y.c))}</b> — chấm ${y.s}/${R.max}<br><span class="sub">${esc(y.nx)}</span></div>`).join("")}</div>
+  <div style="margin-top:10px"><b>Lưu ý về tính cách &amp; cách tiếp cận</b>
+    <div class="note-box">${esc(T.gvNhanXet["Tính cách & sự tiếp thu"] || "Tester chưa ghi nhận — nên xem lại video ca test trước buổi đầu.")}
+    ${T.video ? `<br>🎥 <a href="${esc(T.video)}" target="_blank">Xem lại ca test</a>` : ""}</div></div>
+  <div style="margin-top:10px"><b>Mốc cần bám</b>
+    <div class="note-box">Báo cáo tổng kết chặng <b>15 buổi/lần</b> theo mô hình 03 kèm 01. Cam kết đầu ra của gói: <b>${esc(C.name || "")}</b>.
+    ${O.ngayKG ? `Khai giảng ${fmtD(O.ngayKG)} · lịch ${esc(O.lichHoc)}.` : ""}</div></div>`;
+}
+
+/* ============ KHỞI ĐỘNG ============ */
+$("#scrim").onclick = closeDrawer;
+addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
+$("#q").addEventListener("input", e => { S.q = e.target.value; S.page = 1; if (S.view !== "kh") S.view = "kh"; render(); });
+$("#themeBtn").onclick = () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === "dark" ? "light" : "dark"; render(); };
+drawUser();
+render();
+</script></body></html>
