@@ -485,7 +485,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v43.2 · 12/09/2026";
+window.ALES_BAN = "v43.4 · 16/09/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -16027,7 +16027,13 @@ function viewNhapKH(v) {
         return;
       }
       const coGi = NH_NHOM.filter(n => (D.nhom[n.id] || 0) > 0);
-      if (!coGi.length) { noi.innerHTML = '<span class="sub">Kho đang trống.</span>'; return; }
+      if (!coGi.length) {
+        noi.innerHTML = '<span class="nb-bad">Kho trả lời <b>' + (D.tong || 0) + ' khách</b> nhưng không xếp được nhóm nào'
+          + ' (máy này đang có ' + KH.length + ' khách).<br>Gần như chắc chắn <b>Apps Script trên Trang tính vẫn là bản cũ</b>:'
+          + ' dán mã mới xong phải bấm <b>Triển khai → Quản lý các phương thức triển khai → ✏️ → Phiên bản mới → Triển khai</b>,'
+          + ' chỉ bấm 💾 Lưu là chưa đủ. Làm xong tải lại trang này bằng Ctrl + Shift + R.</span>';
+        return;
+      }
       noi.innerHTML = "";
       const wrap = el("div", "tbl-wrap"); wrap.style.margin = "8px 0";
       const t = el("table", "tbl-kh");
@@ -16119,7 +16125,7 @@ function viewNhapKH(v) {
 
   if (!NH.hang.length) {
     v.appendChild(el("div", "warnbar",
-      "<div><b>Lưu ý trước khi nhập:</b> kho đang chứa <b>" + KH.length + " khách</b>. "
+      "<div><b>Lưu ý trước khi nhập:</b> máy này đang có <b>" + KH.length + " khách</b> (số ở kho xem tại thẻ bên trên). "
       + "Nếu đây vẫn là dữ liệu mẫu thì phải xoá sạch trước khi nhập dữ liệu thật, "
       + "kẻo khách thật nằm lẫn với khách giả. Nút xoá nằm trong ☁ Kho dữ liệu chung.</div>"));
     return;
@@ -16352,6 +16358,14 @@ function nhDemMau() {
    oan — đúng kiểu mất dữ liệu mà mình vừa gặp. Kho là bản gốc, dọn ở đó. */
 async function nhDemNhomKho() {
   const j = await khoPOST({ fn: "demnhom", khoa: KHO.khoaQT || "" });
+  /* Apps Script bản cũ không biết lệnh này: nó rơi vào nhánh ghi dữ liệu và trả về
+     { ok:1, dem:{} }. Nếu cứ tin thì web sẽ báo "kho đang trống" trong khi kho có
+     hàng nghìn khách — rất dễ làm người dùng xoá nhầm. Phải nhận ra và nói rõ. */
+  if (!j || j.nhom === undefined) {
+    throw new Error("Apps Script trên Trang tính đang là BẢN CŨ nên chưa hiểu lệnh dọn. "
+      + "Vào Trang tính → Tiện ích mở rộng → Apps Script → dán lại file mới → Lưu → "
+      + "Triển khai → Quản lý triển khai → ✏ → Phiên bản mới → Triển khai. Rồi quay lại đây.");
+  }
   return { nhom: j.nhom || {}, tong: j.tong || 0 };
 }
 async function nhXoaNhom(chon, xoaIbMau) {
@@ -16392,9 +16406,12 @@ async function nhXoaMau() { return nhXoaNhom(["mau"], true); }
 /* ---------- 7. xoá sạch dữ liệu mẫu ---------- */
 async function nhXoaSach() {
   if (myRole() !== "admin") { toast("Chỉ Giám đốc mới xoá được"); return; }
-  const go = prompt("XOÁ SẠCH toàn bộ khách, đơn hàng, ca test trên máy này VÀ trên kho chung."
-    + "\nDùng khi muốn bỏ dữ liệu mẫu trước khi nhập dữ liệu thật. KHÔNG hoàn tác được."
-    + "\n\nGõ đúng chữ  XOA SACH  rồi bấm OK:");
+  const go = prompt("XOÁ TRẮNG toàn bộ " + KH.length + " khách (KỂ CẢ KHÁCH THẬT), "
+    + ORDERS.length + " đơn, " + TESTS.length + " ca test — trên máy này VÀ trên kho chung."
+    + "\nNút này KHÔNG chừa khách thật. KHÔNG hoàn tác được."
+    + "\n\nNếu chỉ muốn bỏ khách mẫu thì BẤM HUỶ và dùng thẻ “Dọn dữ liệu trên kho chung”"
+    + "\nở màn ⇪ Nhập khách từ file."
+    + "\n\nVẫn muốn xoá trắng thì gõ đúng chữ  XOA SACH  rồi bấm OK:");
   if (nhKhongDau(go) !== "xoa sach") { toast("Đã huỷ"); return; }
   try {
     if (khoBat()) await khoPOST({ fn: "xoasach", khoa: KHO.khoaQT || "" });
@@ -16420,10 +16437,12 @@ async function nhXoaSach() {
       if (!hop || hop.querySelector("#nhXoa")) return;
       const d = el("div", "warnbar bad");
       d.style.marginTop = "10px";
-      d.innerHTML = "<div><b>Xoá sạch dữ liệu mẫu.</b> Dùng đúng một lần, trước khi nhập dữ liệu thật "
-        + "từ Getfly. Xoá cả trên máy này lẫn trên kho chung, <b>không hoàn tác được</b>. "
-        + "Máy của nhân viên sẽ tự xoá theo ở lần đồng bộ sau.</div>";
-      const b = el("button", "btn", "Xoá sạch dữ liệu mẫu");
+      d.innerHTML = "<div>🛑 <b>XOÁ TRẮNG TOÀN BỘ DỮ LIỆU — kể cả khách thật.</b> Nút này "
+        + "<b>không</b> phân biệt khách mẫu với khách thật: nó xoá hết khách, đơn hàng, ca test, "
+        + "trên máy này lẫn trên kho chung, <b>không hoàn tác được</b>. "
+        + "Muốn bỏ riêng khách mẫu mà giữ khách thật thì dùng thẻ <b>“Dọn dữ liệu trên kho chung”</b> "
+        + "ở màn <b>⇪ Nhập khách từ file</b>, hoặc menu <b>ALES CRM → Dọn khách mẫu</b> trên Trang tính.</div>";
+      const b = el("button", "btn", "Xoá TRẮNG mọi dữ liệu (cả khách thật)");
       b.id = "nhXoa"; b.style.marginTop = "8px";
       b.onclick = () => nhXoaSach();
       d.appendChild(b);
@@ -16570,13 +16589,33 @@ async function khoLayLaiTatCa() {
 
   khoManChe("Đang lấy lại toàn bộ dữ liệu từ kho…");
   try {
+    /* Phải đợi lượt hỏi kho đang chạy dở kết thúc. khoLay() có chốt khoDangLay: gọi
+       chồng lên là nó thoát ra ngay và trả về 0 — mình vừa xoá sạch dữ liệu ở máy
+       thì lại không kéo được gì về, màn hình trắng trơn. */
+    for (let i = 0; i < 60 && khoDangLay; i++) await new Promise(r => setTimeout(r, 300));
+    if (khoDangLay) { toast("Đang có lượt đồng bộ chạy dở — đợi 10 giây rồi bấm lại"); return; }
+
     KH.length = 0; ORDERS.length = 0; TESTS.length = 0;
     const ib = khoHopInbox(); ib.length = 0;
     if (Array.isArray(DB.INBOX) && DB.INBOX !== ib) DB.INBOX.length = 0;
     KHO.moc = {}; KHO.resetDaBiet = K.resetLuc; khoLuu(KHO);
+    khoLoi = "";
     await khoLay(0);
+
+    /* Kho có dữ liệu mà kéo về được 0 thì CHẮC CHẮN có lỗi — không được báo "đã lấy về 0"
+       một cách vui vẻ rồi để máy trắng trơn. Thử lại một lượt, vẫn không được thì nói thẳng. */
+    if (!KH.length && (K.so.kh || 0) > 0) {
+      KHO.moc = {}; khoLuu(KHO);
+      await new Promise(r => setTimeout(r, 800));
+      await khoLay(0);
+    }
     persist(); khoChupLai();
-    toast(`Đã lấy về ${KH.length.toLocaleString("vi-VN")} khách · ${ORDERS.length} đơn · ${TESTS.length} ca test`);
+    if (!KH.length && (K.so.kh || 0) > 0) {
+      toast("KHÔNG kéo được dữ liệu về" + (khoLoi ? ": " + khoLoi : "")
+        + ". Kho vẫn còn đủ " + (K.so.kh || 0).toLocaleString("vi-VN") + " khách — bấm lại sau vài giây.");
+    } else {
+      toast(`Đã lấy về ${KH.length.toLocaleString("vi-VN")} khách · ${ORDERS.length} đơn · ${TESTS.length} ca test`);
+    }
     render();
   } catch (e) {
     toast("Lấy lại chưa xong: " + (e.message || e) + " — thử lại khi mạng ổn");
