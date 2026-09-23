@@ -485,7 +485,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v54.0 · 19/09/2026";
+window.ALES_BAN = "v55.0 · 23/09/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -20744,4 +20744,255 @@ VIEWS.phanquyen = () => viewDLTaiKhoan;
   for (let i = NAVDEF.length - 1; i >= 0; i--) if (!NAVDEF[i].items.length) NAVDEF.splice(i, 1);
   PERM_KEYS.forEach(p => { if (p.k === "phanquyen") p.n = "Dữ liệu tài khoản (phân quyền, nhân sự, tài khoản nhận tiền, kho)"; });
 })();
+/* ============ v53 — dòng tổng bằng tổng các mảng + quy luật tháng riêng ============
+   1. Bảng Chi phí · Số data · Giá data theo ngày: dòng tiêu đề của mỗi khối CHÍNH LÀ
+      dòng tổng, mỗi ô bằng tổng các ô cùng cột của các mảng bên dưới — đúng kiểu file
+      Excel trung tâm đang dùng.
+   2. "Thêm cột" — có tháng chạy ads từ cuối tháng trước (ví dụ 28/8 đã bắt đầu chạy
+      cho tháng 9). Nay mỗi tháng đặt được quy luật riêng "tính từ ngày … đến ngày …";
+      bảng theo ngày tự thêm cột cho mấy ngày mượn, và CHI PHÍ · DOANH THU · CP/DT ·
+      data ở mọi màn đều tính theo đúng quy luật đó.
+   ====================================================================== */
+
+/* ---------- 1. quy luật tháng ---------- */
+function qlLay(thang) { return ((DB.QLTHANG || {})[thang]) || null; }
+function qlKhoangThang(thang) {
+  const y = +String(thang).slice(0, 4), m = +String(thang).slice(5, 7);
+  const q = qlLay(thang) || {};
+  const tu = q.tu || (thang + "-01");
+  const den = q.den || kyCuoiThang(y, m);
+  return { tu, den, rieng: !!(q.tu || q.den) };
+}
+function qlDat(thang, tu, den, khongHoi) {
+  DB.QLTHANG = DB.QLTHANG || {};
+  if ((!tu || tu === thang + "-01") && (!den || den === kyCuoiThang(+thang.slice(0, 4), +thang.slice(5, 7))))
+    delete DB.QLTHANG[thang];
+  else DB.QLTHANG[thang] = { tu: tu || "", den: den || "" };
+  _giaCache = {};
+  persist();
+  /* kéo ngày bắt đầu về trước mùng 1 thì rủ đóng tháng trước lại, khỏi đếm hai lần */
+  if (!khongHoi) { try { qlDongThangTruoc(thang, tu); } catch (e) { } }
+}
+/* tháng liền trước một tháng */
+function qlThangTruoc(thang) {
+  const y = +thang.slice(0, 4), m = +thang.slice(5, 7);
+  const d = new Date(y, m - 2, 1);
+  return iso(d).slice(0, 7);
+}
+/* đặt ngày bắt đầu sớm hơn mùng 1 thì rủ luôn đóng tháng trước lại, khỏi đếm hai lần */
+function qlDongThangTruoc(thang, tu) {
+  if (!tu || tu >= thang + "-01") return;
+  const tr = qlThangTruoc(thang);
+  const K = qlKhoangThang(tr);
+  const canDen = iso(dAdd(new Date(tu), -1));
+  if (K.den <= canDen) return;
+  if (!confirm("Tháng " + thang.slice(5) + "/" + thang.slice(0, 4) + " bắt đầu từ " + fmtD(tu)
+    + ".\n\nĐể không đếm hai lần, đóng tháng " + tr.slice(5) + "/" + tr.slice(0, 4)
+    + " lại ở ngày " + fmtD(canDen) + " luôn nhé?")) return;
+  qlDat(tr, qlLay(tr) && qlLay(tr).tu || "", canDen, 1);
+}
+
+/* ---------- 2. khoảng thời gian có áp quy luật tháng ---------- */
+function kyTinh(o) {
+  o = o || {};
+  const t = TODAY, L = o.loai || "thangnay";
+  const y = t.getFullYear(), m = t.getMonth();
+  let tu, den, thang = "", laThang = false;
+  if (L === "tatca") { tu = "2000-01-01"; den = iso(t); }
+  else if (L === "homnay") { tu = den = iso(t); }
+  else if (L === "homqua") { tu = den = iso(dAdd(t, -1)); }
+  else if (L === "tuannay") { tu = iso(kyDauTuan(t)); den = iso(dAdd(kyDauTuan(t), 6)); }
+  else if (L === "tuantruoc") { const d0 = dAdd(kyDauTuan(t), -7); tu = iso(d0); den = iso(dAdd(d0, 6)); }
+  else if (L === "namnay") { tu = iso(new Date(y, 0, 1)); den = iso(new Date(y, 11, 31)); }
+  else if (L === "thangtruoc") {
+    thang = iso(new Date(y, m - 1, 1)).slice(0, 7);
+    const Q = qlKhoangThang(thang); tu = Q.tu; den = Q.den; laThang = true;
+  } else if (L === "khac") {
+    tu = o.tu || iso(new Date(y, m, 1));
+    den = o.den || iso(t);
+    if (den < tu) { const z = tu; tu = den; den = z; }
+    laThang = tu.slice(8) === "01" && tu.slice(0, 7) === den.slice(0, 7)
+      && den === kyCuoiThang(+den.slice(0, 4), +den.slice(5, 7));
+  } else {
+    thang = iso(new Date(y, m, 1)).slice(0, 7);
+    const Q = qlKhoangThang(thang); tu = Q.tu; den = Q.den; laThang = true;
+  }
+  if (!thang) thang = tu.slice(0, 7);
+  const ten = (KY_DS.find(x => x[0] === L) || ["", "Tháng này"])[1];
+  const rieng = laThang && L !== "khac" ? qlKhoangThang(thang).rieng : false;
+  return { tu, den, ten, loai: L, laThang, thang, rieng };
+}
+function kyTenDay(K) {
+  if (K.loai === "khac") return fmtD(K.tu) + " → " + fmtD(K.den);
+  if (K.laThang) return K.ten + " · " + K.thang.slice(5) + "/" + K.thang.slice(0, 4)
+    + (K.rieng ? " (quy luật riêng)" : "");
+  return K.ten;
+}
+/* ba kỳ: kỳ I tính từ ngày bắt đầu của tháng đó (kể cả ngày mượn của tháng trước) */
+function kyBaKy(K) {
+  if (!K || !K.laThang) return null;
+  const th = K.thang;
+  const nho = (a, b) => a < b ? a : b, lon = (a, b) => a > b ? a : b;
+  return [
+    { ten: "TỔNG KỲ I", tu: K.tu, den: nho(th + "-10", K.den) },
+    { ten: "TỔNG KỲ II", tu: lon(th + "-11", K.tu), den: nho(th + "-20", K.den) },
+    { ten: "TỔNG KỲ III", tu: lon(th + "-21", K.tu), den: K.den }
+  ].filter(q => q.tu <= q.den);
+}
+/* thanh chọn thời gian: nói rõ khi tháng đang chạy quy luật riêng */
+function bcThanhKy(v, khoa, themVao) {
+  const o = kyLay(khoa), K = kyTinh(o);
+  const bar = el("div", "row"); bar.style.cssText = "gap:8px;align-items:center;flex-wrap:wrap";
+  bar.appendChild(el("span", "sub", "Thời gian"));
+  const s = el("select");
+  KY_DS.forEach(([k, n]) => s.appendChild(new Option(n, k)));
+  s.value = o.loai || "thangnay";
+  s.onchange = () => { o.loai = s.value; render(); };
+  bar.appendChild(s);
+  if ((o.loai || "") === "khac") {
+    const a = el("input"); a.type = "date"; a.value = K.tu;
+    const b = el("input"); b.type = "date"; b.value = K.den;
+    a.onchange = () => { o.tu = a.value; render(); };
+    b.onchange = () => { o.den = b.value; render(); };
+    bar.appendChild(el("span", "sub", "từ")); bar.appendChild(a);
+    bar.appendChild(el("span", "sub", "đến")); bar.appendChild(b);
+  }
+  (themVao || []).forEach(x => bar.appendChild(x));
+  bar.appendChild(el("div", "grow"));
+  const nhan = el("span", "sub", fmtD(K.tu) + " → " + fmtD(K.den) + (K.laThang ? " · chia 3 kỳ" : ""));
+  bar.appendChild(nhan);
+  if (K.rieng) {
+    const c = el("span", "chip wn", "quy luật riêng");
+    c.title = "Tháng này được đặt tính từ " + fmtD(K.tu) + " đến " + fmtD(K.den)
+      + " — sửa ở Dữ liệu Marketing → Chi phí Ads";
+    bar.appendChild(c);
+  }
+  v.appendChild(bar);
+  return K;
+}
+
+/* ---------- 3. ô đặt quy luật tháng, ngay trên bảng theo ngày ---------- */
+function mktQuyLuatThang(v, K) {
+  if (!K.laThang) return;
+  const th = K.thang;
+  const Q = qlKhoangThang(th);
+  const mac1 = th + "-01", macN = kyCuoiThang(+th.slice(0, 4), +th.slice(5, 7));
+  const d = el("div", "warnbar" + (Q.rieng ? " wn" : " info"));
+  d.innerHTML = "<div>📐 <b>Quy luật tháng " + th.slice(5) + "/" + th.slice(0, 4) + ".</b> "
+    + "Mặc định tính từ " + fmtD(mac1) + " đến " + fmtD(macN) + ". "
+    + "Tháng nào chạy ads sớm từ cuối tháng trước thì kéo ngày bắt đầu về sớm hơn — "
+    + "bảng sẽ <b>thêm cột</b> cho mấy ngày đó, và chi phí · doanh thu · CP/DT · số data "
+    + "ở mọi màn đều tính theo đúng khoảng này."
+    + (Q.rieng ? " <b>Đang chạy quy luật riêng: " + fmtD(Q.tu) + " → " + fmtD(Q.den) + ".</b>" : "")
+    + "</div>";
+
+  const h = el("div", "row"); h.style.marginTop = "8px";
+  h.appendChild(el("span", "sub", "Tính từ"));
+  const a = el("input"); a.type = "date"; a.value = Q.tu;
+  a.onchange = () => { qlDat(th, a.value, Q.den); render(); };
+  h.appendChild(a);
+  h.appendChild(el("span", "sub", "đến"));
+  const b = el("input"); b.type = "date"; b.value = Q.den;
+  b.onchange = () => { qlDat(th, Q.tu, b.value); render(); };
+  h.appendChild(b);
+
+  const nut = (ten, tip, on) => { const x = el("button", "btn sm", ten); x.title = tip; x.onclick = on; h.appendChild(x); };
+  nut("＋ Thêm cột đầu", "Lùi ngày bắt đầu sớm thêm 1 ngày", () => {
+    qlDat(th, iso(dAdd(new Date(Q.tu), -1)), Q.den); render();
+  });
+  nut("－ Bớt cột đầu", "Đẩy ngày bắt đầu muộn lại 1 ngày", () => {
+    const t2 = iso(dAdd(new Date(Q.tu), 1));
+    if (t2 > Q.den) { toast("Ngày bắt đầu không được vượt quá ngày kết thúc"); return; }
+    qlDat(th, t2, Q.den); render();
+  });
+  nut("＋ Thêm cột cuối", "Kéo ngày kết thúc muộn thêm 1 ngày", () => {
+    qlDat(th, Q.tu, iso(dAdd(new Date(Q.den), 1))); render();
+  });
+  nut("－ Bớt cột cuối", "Kéo ngày kết thúc sớm lại 1 ngày", () => {
+    const d2 = iso(dAdd(new Date(Q.den), -1));
+    if (d2 < Q.tu) { toast("Ngày kết thúc không được sớm hơn ngày bắt đầu"); return; }
+    qlDat(th, Q.tu, d2); render();
+  });
+  if (Q.rieng) nut("↺ Đặt lại đúng tháng", "Bỏ quy luật riêng, tính đúng từ mùng 1 đến hết tháng", () => {
+    if (!confirm("Bỏ quy luật riêng của tháng này, tính lại đúng từ mùng 1 đến hết tháng?")) return;
+    qlDat(th, "", ""); render();
+  });
+  d.appendChild(h);
+  v.appendChild(d);
+}
+
+/* ---------- 4. bảng theo ngày: dòng tiêu đề chính là dòng tổng ---------- */
+function mktLuoiNgay(v, K) {
+  mktQuyLuatThang(v, K);
+
+  const ky = kyBaKy(K);
+  const cols = [{ loai: "tong", ten: "TỔNG THÁNG", tu: K.tu, den: K.den }];
+  (ky || [{ ten: "TỔNG KỲ", tu: K.tu, den: K.den }]).forEach(q => {
+    cols.push({ loai: "ky", ten: q.ten, tu: q.tu, den: q.den });
+    kyCacNgay(q.tu, q.den).forEach(d => cols.push({
+      loai: "ngay", ten: d.slice(8) + "/" + d.slice(5, 7), tu: d, den: d, ngay: d,
+      muon: d.slice(0, 7) !== K.thang
+    }));
+  });
+
+  const c = el("div", "card"); c.style.marginTop = "10px";
+  c.appendChild(el("div", "card-h",
+    `<h3>Chi phí · số data · giá data theo từng ngày — ${esc(kyTenDay(K))}</h3>`
+    + '<span class="sub">ô chi phí gõ trực tiếp · dòng in đậm CHI PHÍ QUẢNG CÁO và SỐ DATA = tổng các mảng ngay dưới · dòng GIÁ DATA = chi phí ÷ số data</span>'));
+  const w = el("div", "tbl-wrap"); const t = el("table");
+  t.innerHTML = '<thead><tr><th style="min-width:210px">Mục</th>'
+    + cols.map(x => `<th class="r"${x.loai !== "ngay" ? ' style="background:var(--plane)"' : (x.muon ? ' style="color:var(--s2)"' : "")}>`
+      + esc(x.ten) + (x.muon ? '<div class="sub-cell" style="color:var(--s2)">mượn</div>' : "") + "</th>").join("")
+    + "</tr></thead>";
+  const tb = el("tbody");
+
+  const cpO = (x, mg) => mg ? cpKy(x.tu, x.den, mg) : MANG.reduce((s, M) => s + cpKy(x.tu, x.den, M.id), 0);
+  const dataO = (x, mg) => mg ? mktSoData(x.tu, x.den, mg) : MANG.reduce((s, M) => s + mktSoData(x.tu, x.den, M.id), 0);
+
+  /* dam = dòng tổng của cả khối, tô nền và in đậm */
+  const dong = (ten, mau, tinh, sua, dam) => {
+    const tr = el("tr");
+    if (dam) tr.style.background = "var(--plane)";
+    tr.innerHTML = `<td>${dam ? `<b>${esc(ten)}</b>`
+      : `<span class="chip" style="border-color:${mau};color:${mau}">${esc(ten)}</span>`}</td>`;
+    cols.forEach(x => {
+      const td = el("td", "tnum r");
+      if (x.loai !== "ngay") td.style.background = "var(--plane)";
+      if (sua && x.loai === "ngay") {
+        const i = el("input"); i.type = "number"; i.min = 0; i.step = 100000;
+        i.style.cssText = "width:96px;padding:3px 5px;font-size:12px";
+        i.value = sua.doc(x.ngay) || 0;
+        i.onchange = () => { sua.ghi(x.ngay, i.value); render(); };
+        td.appendChild(i);
+      } else td.innerHTML = dam ? "<b>" + tinh(x) + "</b>" : tinh(x);
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  };
+
+  /* CHI PHÍ QUẢNG CÁO — ô tổng = cộng các mảng bên dưới */
+  dong("CHI PHÍ QUẢNG CÁO", "", x => fmtVND(cpO(x, "")), null, 1);
+  MANG.forEach(M => dong(M.name, M.color, x => fmtVND(cpO(x, M.id)), {
+    doc: d => cpNgay(d, M.id).cp || 0,
+    ghi: (d, val) => {
+      DB.CP[d] = DB.CP[d] || {};
+      DB.CP[d][M.id] = DB.CP[d][M.id] || { cp: 0, gia: 0 };
+      DB.CP[d][M.id].cp = +val || 0;
+      _giaCache = {}; persist();
+    }
+  }));
+
+  /* SỐ DATA — ô tổng = cộng các mảng bên dưới */
+  dong("SỐ DATA", "", x => String(dataO(x, "")), null, 1);
+  MANG.forEach(M => dong(M.name, M.color, x => String(dataO(x, M.id))));
+
+  /* GIÁ DATA — chi phí ÷ số data */
+  dong("GIÁ DATA", "", x => { const n = dataO(x, ""), cp = cpO(x, ""); return n && cp ? fmtVND(cp / n) : "—"; }, null, 1);
+  MANG.forEach(M => dong(M.name, M.color, x => {
+    const n = dataO(x, M.id), cp = cpO(x, M.id);
+    return n && cp ? fmtVND(cp / n) : "—";
+  }));
+
+  t.appendChild(tb); w.appendChild(t); c.appendChild(w); v.appendChild(c);
+}
 </script></body></html>
