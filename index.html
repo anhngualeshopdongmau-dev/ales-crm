@@ -478,6 +478,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
 <div class="cotwrap" id="cotwrap"></div>
 <div class="khm" id="khm"></div>
 <div class="khm" id="xnca" style="z-index:95"></div>
+<div class="khm" id="pbm" style="z-index:96"></div>
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer"></aside>
 <div class="tooltip" id="tip"></div>
@@ -489,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v77.0 · 24/09/2026";
+window.ALES_BAN = "v79.0 · 25/09/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -27908,6 +27909,1935 @@ function kqDuStatus(T) {
       cu.style.display = "none";
       cu.parentNode.insertBefore(moi, cu);
       lab.innerHTML = lab.innerHTML.replace("Địa chỉ", "Địa chỉ");
+    } catch (e) { }
+    return r;
+  };
+})();
+/* ============ v76 — đăng nhập chắc chắn · nhân sự · dọn màn ============
+   3.  Đăng nhập: ghi nhớ máy này, tự vào lại khi phiếu hết hạn, và thêm đường
+       "mật khẩu chung của nhóm" không phụ thuộc Apps Script.
+   4.  Nguyễn Hải Yến quản lý team Sales (Minh · Ngân); Bùi Thị Hảo quản lý CSKH.
+   12. Mã tester GV theo bảng của trung tâm, chỉ người đang hoạt động.
+   7.  Bỏ màn Đánh giá chất lượng ca test.
+   8.  Công tester / rate chỉ Ban điều hành và Kế toán; tester chỉ thấy của mình.
+   11. Bỏ bước Sales xác nhận — báo thẳng kế toán, cần thì QL duyệt.
+   10. Soát trùng chỉ xét tên học viên và ngày / tester, bỏ giờ.
+   1.  Sửa được tên khách lấy từ Pancake.
+   ====================================================================== */
+
+/* ================= 3. ĐĂNG NHẬP ================= */
+const NHO_KEY = "ales_nho_dn";
+function nhoDoc() { try { return JSON.parse(localStorage.getItem(NHO_KEY) || "null"); } catch (e) { return null; } }
+function nhoLuu(o) { try { o ? localStorage.setItem(NHO_KEY, JSON.stringify(o)) : localStorage.removeItem(NHO_KEY); } catch (e) { } }
+
+/* --- mật khẩu chung theo nhóm, cất trong kho chung --- */
+function mkNhomSo() { DB.MKNHOM = DB.MKNHOM || {}; return DB.MKNHOM; }
+function mkNhomCua(uid) {
+  const u = userOf(uid) || {};
+  const g = (typeof groupOfRole === "function" ? groupOfRole(u.role) : null) || {};
+  return mkNhomSo()[g.id] || "";
+}
+function mkNhomDat(gid, mk) { mkNhomSo()[gid] = String(mk || ""); persist(); }
+/* vào được bằng mật khẩu nhóm thì web tự cấp phiếu trong máy, không cần Apps Script */
+function vaoBangMKNhom(uid, mk) {
+  const cho = mkNhomCua(uid);
+  if (!cho || String(mk) !== cho) return false;
+  KHO.uid = uid; KHO.bat = 1; KHO.token = "MKNHOM"; KHO.han = Date.now() + 30 * 24 * 3600 * 1000;
+  khoLuu(KHO); S.me = uid;
+  return true;
+}
+
+/* --- vào lại tự động khi phiếu hết hạn --- */
+let _dangVaoLai = 0;
+async function vaoLaiTuDong() {
+  if (_dangVaoLai) return false;
+  const n = nhoDoc();
+  if (!n || !n.uid || !n.mk) return false;
+  _dangVaoLai = 1;
+  try {
+    try {
+      const j = await khoGoiTho({ fn: "dangnhap", uid: n.uid, mk: n.mk });
+      KHO.token = j.token; KHO.han = j.han; KHO.uid = j.uid; KHO.bat = 1; KHO.khoaQT = "";
+      khoLuu(KHO); S.me = j.uid;
+      return true;
+    } catch (e) { }
+    return vaoBangMKNhom(n.uid, n.mk);
+  } finally { _dangVaoLai = 0; }
+}
+
+/* --- màn đăng nhập --- */
+function loginScreen() {
+  const w = document.getElementById("login");
+  w.style.display = "grid";
+  const app = document.querySelector(".app"); if (app) app.style.display = "none";
+  const gsel = document.getElementById("lgGroup"), usel = document.getElementById("lgUser");
+  const pw = document.getElementById("lgPw"), msg = document.getElementById("lgMsg");
+  const hint = document.getElementById("lgHint"), nut = document.getElementById("lgBtn");
+  if (!gsel.options.length) LOGIN_GROUPS.forEach(g => gsel.appendChild(new Option(g.name, g.id)));
+  const nho = nhoDoc();
+  const fillU = () => {
+    const g = LOGIN_GROUPS.find(x => x.id === gsel.value) || LOGIN_GROUPS[0];
+    usel.innerHTML = "";
+    USERS.filter(u => g.roles.includes(u.role) && u.active)
+      .forEach(u => usel.appendChild(new Option(u.name + (u.team ? " · " + teamOf(u.team).name : ""), u.id)));
+    if (nho && nho.uid && [...usel.options].some(o => o.value === nho.uid)) usel.value = nho.uid;
+  };
+  gsel.onchange = fillU;
+  if (nho && nho.uid) {
+    const u = userOf(nho.uid);
+    const g = u && typeof groupOfRole === "function" ? groupOfRole(u.role) : null;
+    if (g) gsel.value = g.id;
+  }
+  fillU();
+  themConMat(pw);
+  if (hint) hint.innerHTML = "Mật khẩu do công ty cấp. Bấm 👁 để xem lại đã gõ đúng chưa.";
+
+  /* ô ghi nhớ */
+  let cbNho = document.getElementById("lgNho");
+  if (!cbNho) {
+    const r = el("label", "row");
+    r.style.cssText = "gap:7px;align-items:center;margin:10px 0 2px;cursor:pointer;font-size:13.5px";
+    cbNho = el("input"); cbNho.type = "checkbox"; cbNho.id = "lgNho"; cbNho.style.flex = "none";
+    r.appendChild(cbNho);
+    r.appendChild(el("span", "", "Ghi nhớ đăng nhập trên máy này — lần sau mở link là vào thẳng"));
+    if (nut && nut.parentNode) nut.parentNode.insertBefore(r, nut);
+  }
+  cbNho.checked = !!(nho && nho.uid);
+
+  const bao = (t, xau) => { msg.textContent = t; msg.style.display = t ? "block" : "none"; msg.style.color = xau ? "" : "var(--good)"; };
+  const go = async () => {
+    const uid = usel.value, mk = pw.value;
+    if (!mk) { bao("Chưa nhập mật khẩu.", 1); return; }
+    nut.disabled = true; nut.textContent = "Đang kiểm tra…"; bao("");
+    const ghiNho = () => nhoLuu(cbNho.checked ? { uid, mk } : null);
+    try {
+      /* 1 — khoá quản trị */
+      let laQT = 0;
+      try { KHO.khoaQT = mk; KHO.token = ""; await khoGET({ fn: "trangthai" }); laQT = 1; }
+      catch (e) { KHO.khoaQT = ""; }
+      if (laQT) {
+        KHO.uid = uid; KHO.bat = 1; khoLuu(KHO); S.me = uid; ghiNho();
+        bao("Vào bằng khoá quản trị.", 0);
+        await khoVaoApp(!KHO.moc || !Object.keys(KHO.moc).length);
+        return;
+      }
+      /* 2 — hỏi Apps Script */
+      let loiScript = "";
+      try {
+        const j = await khoGoiTho({ fn: "dangnhap", uid, mk });
+        KHO.token = j.token; KHO.han = j.han; KHO.uid = j.uid; KHO.bat = 1; KHO.khoaQT = "";
+        khoLuu(KHO); S.me = j.uid; ghiNho();
+        await khoVaoApp(!KHO.moc || !Object.keys(KHO.moc).length);
+        return;
+      } catch (e) { loiScript = e.message || ""; }
+      /* 3 — mật khẩu chung của nhóm, không cần Apps Script */
+      if (vaoBangMKNhom(uid, mk)) {
+        ghiNho();
+        bao("Vào bằng mật khẩu chung của nhóm.", 0);
+        await khoVaoApp(!KHO.moc || !Object.keys(KHO.moc).length);
+        return;
+      }
+      bao(/Failed to fetch|NetworkError/i.test(loiScript)
+        ? "Không nối được kho dữ liệu. Kiểm tra mạng rồi thử lại."
+        : (loiScript || "Mật khẩu chưa đúng."), 1);
+    } catch (e) {
+      bao(e.message || "Không đăng nhập được.", 1);
+    } finally { nut.disabled = false; nut.textContent = "Đăng nhập"; }
+  };
+  nut.onclick = go;
+  pw.onkeydown = e => { if (e.key === "Enter") go(); };
+  pw.value = ""; pw.focus();
+}
+function logout() {
+  KHO.token = ""; KHO.han = 0; KHO.khoaQT = ""; khoLuu(KHO);
+  nhoLuu(null);
+  S.me = null; loginScreen();
+}
+/* mở link là vào thẳng nếu đã ghi nhớ */
+(function () {
+  setTimeout(async () => {
+    const w = document.getElementById("login");
+    if (!w || w.style.display === "none") return;
+    if (khoConHan() && KHO.uid) { S.me = KHO.uid; khoVaoApp(false); return; }
+    const n = nhoDoc();
+    if (!n || !n.uid) return;
+    const nut = document.getElementById("lgBtn");
+    if (nut) { nut.disabled = true; nut.textContent = "Đang vào lại…"; }
+    const ok = await vaoLaiTuDong();
+    if (nut) { nut.disabled = false; nut.textContent = "Đăng nhập"; }
+    if (ok) khoVaoApp(!KHO.moc || !Object.keys(KHO.moc).length);
+  }, 500);
+})();
+/* gọi kho mà báo hết hạn thì tự vào lại rồi làm tiếp, không đá ra màn đăng nhập */
+(function () {
+  ["khoGET", "khoPOST"].forEach(ten => {
+    if (typeof window[ten] !== "function") return;
+    const goc = window[ten];
+    window[ten] = async function () {
+      try { return await goc.apply(this, arguments); }
+      catch (e) {
+        if (!/hết hạn|het han|token|phiên|unauthor/i.test(e.message || "")) throw e;
+        if (!(await vaoLaiTuDong())) throw e;
+        return goc.apply(this, arguments);
+      }
+    };
+  });
+})();
+
+/* --- màn đặt mật khẩu chung cho quản trị --- */
+function moMKNhom() {
+  const w = $("#cotwrap"); if (!w) return;
+  w.innerHTML = ""; w.classList.add("on");
+  const c = el("div", "cot-card"); c.style.cssText = "max-width:620px";
+  const h = el("div", "cot-h");
+  h.innerHTML = "<b>🔑 Mật khẩu chung theo nhóm</b>";
+  h.appendChild(el("div", "grow"));
+  const x = el("button", "btn sm", "Đóng"); x.onclick = () => w.classList.remove("on"); h.appendChild(x);
+  c.appendChild(h);
+  const b = el("div", "cot-b");
+  b.appendChild(el("div", "warnbar wn",
+    "<div>Đây là <b>đường vào dự phòng</b>, chạy ngay trong web nên không phụ thuộc Apps Script. "
+    + "Mật khẩu cất trong kho chung của trung tâm. Đặt xong, nhân viên chọn tên mình rồi gõ "
+    + "mật khẩu của nhóm là vào được, kể cả khi phần đăng nhập bên Apps Script đang hỏng.</div>"));
+  LOGIN_GROUPS.forEach(g => {
+    const soNguoi = USERS.filter(u => g.roles.includes(u.role) && u.active).length;
+    const r = el("div"); r.style.margin = "12px 0";
+    r.appendChild(el("label", "", esc(g.name) + ' <span class="sub">— ' + soNguoi + " người</span>"));
+    const row = el("div", "row"); row.style.cssText = "gap:6px;margin-top:4px;align-items:center";
+    const i = el("input"); i.type = "password"; i.value = mkNhomSo()[g.id] || "";
+    i.placeholder = "để trống = không dùng đường này";
+    i.style.flex = "1";
+    const bs = el("button", "btn sm pri", "Lưu");
+    bs.onclick = () => { mkNhomDat(g.id, i.value); toast("Đã lưu mật khẩu nhóm " + g.name); };
+    row.appendChild(i); row.appendChild(bs);
+    r.appendChild(row); themConMat(i);
+    b.appendChild(r);
+  });
+  c.appendChild(b); w.appendChild(c);
+}
+(function () {
+  if (typeof DLTK_TAB === "undefined") return;
+  if (!DLTK_TAB.some(x => x[0] === "mk")) DLTK_TAB.push(["mk", "Mật khẩu chung"]);
+  const goc = viewDLTaiKhoan;
+  viewDLTaiKhoan = function (v) {
+    if ((S.dltkTab || "pq") !== "mk") return goc.apply(this, arguments);
+    const tabs = el("div", "tabs");
+    DLTK_TAB.forEach(([k, n]) => {
+      if ((k === "ns" || k === "kho" || k === "mk") && myRole() !== "admin") return;
+      if (k === "ck" && myRole() !== "admin" && myRole() !== "ketoan") return;
+      const b = el("button", k === "mk" ? "on" : "", n);
+      b.onclick = () => { S.dltkTab = k; render(); };
+      tabs.appendChild(b);
+    });
+    v.appendChild(tabs);
+    const c = el("div", "card");
+    c.appendChild(el("div", "card-h", "<h3>Mật khẩu chung theo nhóm</h3>"
+      + '<span class="sub">đường vào dự phòng, không phụ thuộc Apps Script</span>'));
+    const bb = el("div", "card-b");
+    const bt = el("button", "btn pri", "🔑 Mở đặt mật khẩu chung");
+    bt.onclick = moMKNhom;
+    bb.appendChild(bt);
+    bb.appendChild(el("div", "sub", "Nhân viên chọn tên mình trong ô, gõ mật khẩu chung của nhóm là vào được. "
+      + "Web vẫn thử đăng nhập qua Apps Script trước; hỏng thì mới dùng đường này."));
+    c.appendChild(bb); v.appendChild(c);
+    return c;
+  };
+})();
+
+/* ================= 4 + 12. NHÂN SỰ ================= */
+(function () {
+  /* team mới của Nguyễn Hải Yến */
+  try {
+    if (!TEAMS.some(t => t.id === "T4")) TEAMS.push({ id: "T4", name: "TEAM YẾN", coso: "HVT", ql: null, target: 250e6 });
+  } catch (e) { }
+  const dat = (ten, role, team) => {
+    const u = USERS.find(x => nsChuan(x.name) === nsChuan(ten));
+    if (!u) return;
+    u.role = role; if (team !== undefined) u.team = team; u.active = 1;
+  };
+  dat("Nguyễn Hải Yến", "ql", "T4");
+  dat("Nguyễn Hiền Minh", "sales", "T4");
+  dat("Khuất Hằng Ngân", "sales", "T4");
+  dat("Bùi Thị Hảo", "qlcskh", null);
+  ["Chu Thị Xoan", "Nguyễn Thị Minh Ngọc", "Nguyễn Thị Huyền", "Nguyễn Ngọc Lê"]
+    .forEach(n => dat(n, "cskh", null));
+  try {
+    TEAMS.forEach(t => { const q = USERS.find(u => u.role === "ql" && u.team === t.id && u.active); if (q) t.ql = q.id; });
+    const ds = USERS.filter(u => (u.role === "sales" || u.role === "ql") && u.active);
+    SALES.length = 0; ds.forEach(x => SALES.push(x));
+    SALES.forEach((s, i) => { if (!s.target) s.target = s.role === "ql" ? 110e6 : [55e6, 65e6, 75e6, 85e6][i % 4]; });
+  } catch (e) { }
+})();
+
+/* --- 12. bảng tester đang hoạt động, đúng mã GV của trung tâm --- */
+const TESTER_THAT = [
+  ["Tester.Đức", "GV02"], ["Tester.Trang", "GV09"], ["Tester.Phượng", "GV12"],
+  ["Tester.Chi", "GV15"], ["Tester.Mai Anh", "GV16"], ["Tester.Hương", "GV17"],
+  ["Tester.Hà Chi", "GV19"], ["Nguyễn Thảo Nhi", "GV20"]
+];
+(function () {
+  const cu = {
+    "GV02": ["Mr. Đức", "Tester.Đức"], "GV09": ["Ms. Thùy", "Ms. Trang", "Tester.Trang"],
+    "GV12": ["Ms. Phượng", "Tester.Phượng"], "GV15": ["Ms. Chi", "Tester.Chi"],
+    "GV16": ["Ms. Mai Anh", "Tester.Mai Anh"], "GV17": ["Ms. Hương", "Tester.Hương"],
+    "GV19": ["Ms. Hà Chi", "Tester.Hà Chi"], "GV20": ["Ms. Nhi", "Nguyễn Thảo Nhi"]
+  };
+  const dung = new Set();
+  TESTER_THAT.forEach(([ten, gv]) => {
+    let u = USERS.find(x => x.role === "tester" && x.gv === gv);
+    if (!u) u = USERS.find(x => x.role === "tester" && (cu[gv] || []).some(t => nsChuan(t) === nsChuan(x.name)));
+    if (!u) u = USERS.find(x => x.role === "tester" && !dung.has(x.id) && !TESTER_THAT.some(([, g]) => g === x.gv));
+    if (!u) {
+      u = { id: "U" + (200 + USERS.length), name: ten, role: "tester", team: null, coso: "HVT", gv, color: AVC[USERS.length % AVC.length], active: 1 };
+      USERS.push(u);
+    }
+    u.name = ten; u.gv = gv; u.active = 1; u.role = "tester";
+    dung.add(u.id);
+  });
+  USERS.forEach(u => { if (u.role === "tester" && !dung.has(u.id)) u.active = 0; });
+  try { const ds = USERS.filter(u => u.role === "tester" && u.active); TESTERS.length = 0; ds.forEach(x => TESTERS.push(x)); } catch (e) { }
+})();
+
+/* ================= 7. bỏ màn Đánh giá chất lượng ca test ================= */
+(function () {
+  try {
+    NAVDEF.forEach(g => { g.items = g.items.filter(i => i.id !== "chatluong"); });
+    for (let i = NAVDEF.length - 1; i >= 0; i--) if (!NAVDEF[i].items.length) NAVDEF.splice(i, 1);
+    Object.keys(PERM_MAC_DINH).forEach(r => {
+      const q = PERM_MAC_DINH[r];
+      if (q && q !== "*") PERM_MAC_DINH[r] = q.split(",").filter(x => x !== "chatluong").join(",");
+    });
+    for (let i = PERM_KEYS.length - 1; i >= 0; i--) if (PERM_KEYS[i].k === "chatluong") PERM_KEYS.splice(i, 1);
+    delete VIEWS.chatluong;
+  } catch (e) { }
+})();
+(function () {
+  const goc = viewChuan;
+  viewChuan = function () {
+    const r = goc.apply(this, arguments);
+    if (S.view === "chatluong") { S.view = "cacuatoi"; S.page = 1; }
+    return r;
+  };
+})();
+
+/* ================= 8. công tester chỉ BĐH · Kế toán · chính tester ================= */
+const CONG_VAI = ["admin", "ketoan", "tester"];
+(function () {
+  try {
+    ["hr"].forEach(r => {
+      const q = PERM_MAC_DINH[r];
+      if (q && q !== "*") PERM_MAC_DINH[r] = q.split(",").filter(x => x !== "congtester").join(",");
+    });
+    NAVDEF.forEach(g => g.items.forEach(i => {
+      if (i.id === "congtester" && i.roles && i.roles !== "*") i.roles = "admin,ketoan,tester";
+    }));
+  } catch (e) { }
+})();
+(function () {
+  const goc = navFor;
+  navFor = function () {
+    const gs = goc.apply(this, arguments);
+    if (CONG_VAI.indexOf(myRole()) >= 0) return gs;
+    return gs.map(g => Object.assign({}, g, { items: g.items.filter(i => i.id !== "congtester") }))
+      .filter(g => g.items.length);
+  };
+})();
+(function () {
+  const goc = viewChuan;
+  viewChuan = function () {
+    const r = goc.apply(this, arguments);
+    if (S.view === "congtester" && CONG_VAI.indexOf(myRole()) < 0) { S.view = "dash"; S.page = 1; }
+    return r;
+  };
+})();
+
+/* ================= 11. bỏ bước Sales xác nhận ================= */
+function caDoiXN() { return false; }
+function caCanNguoiSoat() { return false; }
+function caChoXN() { return []; }
+function veCanhBaoXacNhanCa() { }
+/* tên lệch một chữ: vẫn tính công nhưng báo thẳng cho kế toán */
+(function () {
+  const goc = caTinhCong;
+  caTinhCong = function (T) {
+    const r = goc.apply(this, arguments);
+    if (r && !r.ok && /chờ Sales xác nhận|tên lệch một chữ/.test(r.vi || ""))
+      return { ok: 1, phut: phutTinhCong(T), ielts: caIELTS(T) };
+    return r;
+  };
+})();
+(function () {
+  const goc = caCoSoat;
+  caCoSoat = function (T) {
+    const c = goc.apply(this, arguments) || [];
+    try {
+      const B = T && T.bcl;
+      if (B && B.tenMuc === "lech")
+        c.push("tên trên Teams là “" + (B.tenTeams || "") + "”, CRM ghi “"
+          + ((khOf(T.khId) || {}).hoTenHV || "") + "” — kế toán soát lại");
+    } catch (e) { }
+    return c;
+  };
+})();
+
+/* ================= 10. soát trùng: tên + ngày/tester, bỏ giờ ================= */
+function bclSoat(T, R, tenTep) {
+  const k = khOf(T && T.khId) || {};
+  const tes = userOf(T && T.testerId) || {};
+  const F = bclTuTenTep(tenTep || "");
+  const nguoi = Object.keys(R.noi || {}).filter(x => x && x !== "(không rõ)");
+  const phut = Math.round(R.giay / 60);
+  const dat = [], loi = [], nhac = [];
+  let diem = 0;
+
+  const mucNoi = nguoi.length ? bclMucTot(k.hoTenHV, nguoi) : "";
+  const mucTep = F.chu ? bclMucTen(k.hoTenHV, F.chu) : "lac";
+  let tenMuc = mucNoi || mucTep;
+  let tenTeams = "";
+  if (mucNoi) tenTeams = nguoi.slice().sort((a, b) => MUC_HON[bclMucTen(k.hoTenHV, b)] - MUC_HON[bclMucTen(k.hoTenHV, a)])[0] || "";
+  else nhac.push("bản chép lời không ghi tên người nói — web đối chiếu theo tên tệp");
+
+  /* A. TÊN HỌC VIÊN */
+  if (tenMuc === "trung") { diem += 50; dat.push("tên học viên khớp"); }
+  else if (tenMuc === "lech") {
+    diem += 25;
+    dat.push("tên học viên lệch một chữ");
+    nhac.push("tên trên Teams là “" + tenTeams + "”, CRM ghi “" + (k.hoTenHV || "") + "”");
+  } else if (mucNoi) {
+    loi.push("TÊN KHÔNG KHỚP: bản chép lời ghi “" + nguoi.join("”, “") + "”, "
+      + "ca này là của học viên “" + (k.hoTenHV || "") + "”. Kiểm tra lại xem có nộp nhầm tệp không.");
+  }
+  if (F.chu && mucTep === "trung") { diem += 20; dat.push("tên tệp có tên học viên"); }
+
+  /* B. NGÀY TEST — không xét giờ, vì tester hay bị trễ ca trước */
+  if (F.ngay && T.date) {
+    const d = new Date(T.date);
+    if (F.ngay.d === d.getDate() && F.ngay.m === d.getMonth() + 1) { diem += 30; dat.push("đúng ngày test"); }
+    else loi.push("NGÀY KHÔNG KHỚP: tên tệp ghi ngày " + F.ngay.d + "/" + F.ngay.m
+      + ", lịch ca này là " + fmtD(T.date));
+  }
+
+  /* C. TESTER */
+  const coTes = nguoi.some(n => bclMucTen(tes.name, n) !== "lac"
+    || (tes.gv && bclKhongDau(n).indexOf(bclKhongDau(tes.gv)) >= 0));
+  if (coTes) { diem += 30; dat.push("đúng tester " + (tes.gv || tes.name || "")); }
+  else nhac.push("không thấy tên hay mã của tester " + (tes.gv || tes.name || "") + " trong bản chép lời");
+
+  /* C2. số phút tester tự khai — chỉ ghi chú cho kế toán, không dùng để tính công */
+  const khai0 = +((T && (T.phutHoc || T.hrPhut)) || 0);
+  if (khai0 && Math.abs(khai0 - phut) > 5)
+    nhac.push("tester khai " + khai0 + " phút, bản chép lời là " + phut + " phút — công tính theo bản chép lời");
+
+  /* D. lỗi tệp */
+  if (R.kieu === "vtt") {
+    if (!R.guid.length) loi.push("tệp .vtt không có mã cuộc họp — không phải bản chép lời gốc của Teams");
+    else if (R.guid.length > 1) loi.push("tệp có " + R.guid.length + " mã cuộc họp — bị ghép từ nhiều buổi");
+    if (!R.cueTang) loi.push("số thứ tự dòng chép lời nhảy lùi — tệp bị cắt dán");
+  } else nhac.push("bản .docx không có mã cuộc họp — nên dùng bản .vtt để web soát chặt hơn");
+  if (!R.tang) loi.push("mốc thời gian không tăng dần — tệp có dấu bị sửa");
+  if (phut > 0 && R.luot < Math.max(6, phut / 3))
+    loi.push("chỉ có " + R.luot + " lượt nói trong " + phut + " phút — quá thưa so với một ca test thật");
+
+  return { phut, khai: +((T && (T.phutHoc || T.hrPhut)) || 0), diem, dat, loi, nhac, nguoi, tenMuc, tenTeams, guid: R.guid[0] || "" };
+}
+
+/* ================= 1. sửa tên khách lấy từ Pancake ================= */
+(function () {
+  const goc = mktChoChia;
+  mktChoChia = function (v, list0, xong) {
+    const r = goc.apply(this, arguments);
+    try {
+      const t = v.querySelector("table"); if (!t) return r;
+      const ds = (typeof mktLocNgay === "function" ? mktLocNgay(list0) : list0) || [];
+      [...t.querySelectorAll("tbody tr")].forEach(tr => {
+        const oTen = tr.children[xong ? 2 : 3]; if (!oTen) return;
+        const nc = oTen.querySelector(".name-cell"); if (!nc || nc._sua) return;
+        const sdt = (tr.innerText.match(/0\d{8,10}/) || [])[0];
+        const x = ds.find(z => z && String(z.phone || "").replace(/\D/g, "") === String(sdt || "").replace(/\D/g, ""));
+        if (!x) return;
+        nc._sua = 1;
+        const b = el("button", "btn sm", "✎");
+        b.title = "Sửa tên khách — Pancake hay trả về nickname";
+        b.style.cssText = "margin-left:5px;padding:1px 6px";
+        b.onclick = e => {
+          e.stopPropagation();
+          const ten = prompt("Tên khách (Pancake đang ghi là “" + (x.name || "") + "”):", x.name || "");
+          if (ten === null) return;
+          x.name = String(ten).trim();
+          x.tenSua = 1;
+          persist(); toast("Đã sửa tên khách"); render();
+        };
+        nc.appendChild(b);
+        if (x.tenSua) nc.appendChild(el("span", "sub-cell", "tên đã sửa tay"));
+      });
+    } catch (e) { }
+    return r;
+  };
+})();
+/* tên đã sửa tay thì đi theo khách khi chia số */
+(function () {
+  if (typeof thaSo !== "function") return;
+  const goc = thaSo;
+  thaSo = function (x) {
+    const truoc = KH.length;
+    const r = goc.apply(this, arguments);
+    try {
+      if (KH.length > truoc && x && x.name) {
+        const k = KH[KH.length - 1];
+        k.hoTenHV = String(x.name).trim() || k.hoTenHV;
+        persist();
+      }
+    } catch (e) { }
+    return r;
+  };
+})();
+/* ============ v77 — phiếu tester cột A→L · báo cáo hiệu quả tester ============
+   13. Phiếu trả kết quả đúng cột A→L trong ảnh chị gửi.
+   14. Công tester: bỏ cột "Phút được tính" (trùng Phút ghi hình), thêm dòng Tổng,
+       và mục "Báo cáo hiệu quả Tester" theo ba kỳ, bấm vào tên là ra từng ca.
+   ====================================================================== */
+
+/* ---------- ca test có ra đơn không: lấy từ khách đã sang L7 / L8 ---------- */
+function caRaDon(T) {
+  const k = khOf(T && T.khId);
+  if (!k) return false;
+  if (k.level === "L7" || k.level === "L8") return true;
+  return !!(k.orders && k.orders.length);
+}
+
+/* ---------- ba kỳ trong tháng ---------- */
+function tsBaKy(y, m) {
+  const cuoi = new Date(y, m + 1, 0).getDate();
+  return [
+    { ten: "TỔNG HỢP KỲ I", tu: iso(new Date(y, m, 1)), den: iso(new Date(y, m, 10)) },
+    { ten: "TỔNG HỢP KỲ II", tu: iso(new Date(y, m, 11)), den: iso(new Date(y, m, 20)) },
+    { ten: "TỔNG HỢP KỲ III", tu: iso(new Date(y, m, 21)), den: iso(new Date(y, m, cuoi)) }
+  ];
+}
+function tsHieuQua(u, tu, den) {
+  const ts = TESTS.filter(T => T && T.testerId === u.id && T.date >= tu && T.date <= den
+    && T.status !== "huy" && T.status !== "cancel");
+  const dat = ts.filter(T => caTinhCong(T).ok);
+  const dk = dat.filter(caRaDon);
+  return { u, ca: dat.length, caTatCa: ts.length, dk: dk.length, tl: dat.length ? dk.length / dat.length : 0, ts, dat };
+}
+
+/* ---------- bảng ba kỳ ---------- */
+function veBCHieuQua(v, y, m) {
+  const laTester = myRole() === "tester";
+  const ds = laTester ? [me()] : TESTERS.filter(u => u.active);
+  const c = el("div", "card"); c.style.marginTop = "10px";
+  c.appendChild(el("div", "card-h", "<h3>Báo cáo hiệu quả Tester — tháng " + (m + 1) + "/" + y + "</h3>"
+    + '<span class="sub">ca đăng ký lấy tự động từ khách đã chuyển sang L7 hoặc L8</span>'));
+  const b = el("div", "card-b");
+  const g = el("div"); g.style.cssText = "display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px";
+  tsBaKy(y, m).forEach(K => {
+    const box = el("div");
+    box.appendChild(el("div", "", "<b>" + esc(K.ten) + "</b> <span class=\"sub\">"
+      + esc(fmtD(K.tu)) + " – " + esc(fmtD(K.den)) + "</span>"));
+    const wrap = el("div", "tbl-wrap"); wrap.style.marginTop = "6px";
+    const t = el("table");
+    t.innerHTML = '<thead><tr><th>Tester</th><th class="r">Số ca test</th><th class="r">Số ca đăng ký</th>'
+      + '<th class="r">Tỷ lệ đăng ký / test</th><th class="r">Xếp hạng</th></tr></thead>';
+    const tb = el("tbody");
+    const hang = ds.map(u => tsHieuQua(u, K.tu, K.den)).sort((a, b2) => b2.tl - a.tl || b2.dk - a.dk);
+    let hangSo = 0, tlTruoc = -1, dem = 0;
+    hang.forEach(r => {
+      dem++;
+      if (r.tl !== tlTruoc) { hangSo = dem; tlTruoc = r.tl; }
+      const tr = el("tr");
+      tr.innerHTML = `<td><b>${esc(r.u.name)}</b> <span class="sub">${esc(r.u.gv || "")}</span></td>
+        <td class="tnum r">${r.ca}</td><td class="tnum r">${r.dk}</td>
+        <td class="tnum r">${Math.round(r.tl * 100)}%</td>
+        <td class="tnum r">${hangSo}</td>`;
+      tb.appendChild(tr);
+    });
+    const tong = hang.reduce((s, r) => ({ ca: s.ca + r.ca, dk: s.dk + r.dk }), { ca: 0, dk: 0 });
+    const trT = el("tr"); trT.style.cssText = "font-weight:700;background:var(--plane)";
+    trT.innerHTML = `<td>Tổng</td><td class="tnum r">${tong.ca}</td><td class="tnum r">${tong.dk}</td>
+      <td class="tnum r">${tong.ca ? Math.round(tong.dk / tong.ca * 100) : 0}%</td><td></td>`;
+    tb.appendChild(trT);
+    t.appendChild(tb); wrap.appendChild(t); box.appendChild(wrap);
+    g.appendChild(box);
+  });
+  b.appendChild(g);
+  c.appendChild(b); v.appendChild(c);
+}
+
+/* ---------- chi tiết từng ca của một tester, đúng cột A→O ---------- */
+function tsBangCa(v, R, y, m) {
+  const c = el("div", "card"); c.style.marginTop = "10px";
+  c.appendChild(el("div", "card-h", "<h3>Từng ca test của " + esc(R.u.name) + " — tháng " + (m + 1) + "/" + y + "</h3>"
+    + '<span class="sub">bấm lại dòng tên ở bảng trên để đóng</span>'));
+  const wrap = el("div", "tbl-wrap"); const t = el("table");
+  t.innerHTML = '<thead><tr>'
+    + "<th>Ngày Tester điền</th><th>Ngày test</th><th>Giờ test</th><th>Họ và tên học viên</th><th>SĐT</th>"
+    + "<th>Link Video test</th><th>Link kết quả</th><th>Bản chép lời</th><th>Loại ca</th>"
+    + "<th>Trình độ đầu vào</th><th>Người tư vấn</th><th class=\"r\">Số phút Test</th>"
+    + "<th>Ca đạt điều kiện</th><th class=\"r\">Đơn giá</th><th class=\"r\">Thành tiền dự kiến</th>"
+    + "</tr></thead>";
+  const tb = el("tbody");
+  const ds = R.ts.slice().sort((a, b) => (a.date + a.gio > b.date + b.gio ? 1 : -1));
+  let tongPhut = 0, tongTien = 0;
+  ds.forEach(T => {
+    const k = khOf(T.khId) || {};
+    const r = caTinhCong(T);
+    const phut = r.ok ? r.phut : 0;
+    const tien = r.ok ? Math.round(phut / 60 * R.gia) : 0;
+    tongPhut += phut; tongTien += tien;
+    const kq = Array.isArray(T.kqVao) ? T.kqVao : (T.ketQuaVao ? [T.ketQuaVao] : []);
+    const tr = el("tr");
+    tr.innerHTML = `<td class="tnum">${T.filledAt ? esc(fmtD(T.filledAt)) : "—"}</td>
+      <td class="tnum">${esc(fmtD(T.date))}</td><td class="tnum">${esc(T.gio || "")}</td>
+      <td><b>${esc(k.hoTenHV || "—")}</b></td><td class="tnum">${esc(k.phone || "—")}</td>
+      <td>${T.video ? '<a href="' + esc(T.video) + '" target="_blank" rel="noopener">mở</a>' : '<span class="chip dg">thiếu</span>'}</td>
+      <td>${T.linkKQ ? '<a href="' + esc(T.linkKQ) + '" target="_blank" rel="noopener">mở</a>' : '<span class="chip dg">thiếu</span>'}</td>
+      <td>${T.bcl ? '<span class="chip ok">có · ' + T.bcl.phut + "′</span>" : (T.bclMien ? '<span class="chip wn">được miễn</span>' : '<span class="chip dg">chưa nộp</span>')}</td>
+      <td><span class="chip">${caLoai(T)}</span></td>
+      <td class="sub-cell" style="max-width:190px;white-space:normal">${kq.map(z => '<span class="chip">' + esc(z) + "</span>").join(" ") || "—"}</td>
+      <td class="sub-cell">${esc(caNguoiTuVan(T))}</td>
+      <td class="tnum r">${phutThat(T) || "—"}</td>
+      <td>${r.ok ? '<span class="chip ok">đạt · ' + phut + "′ tính công</span>"
+      : '<span class="chip dg">' + esc(r.vi) + "</span>"}</td>
+      <td class="tnum r">${fmtVND(R.gia)}</td>
+      <td class="tnum r" style="font-weight:650">${fmtVND(tien)}</td>`;
+    tb.appendChild(tr);
+  });
+  if (!ds.length) tb.appendChild(el("tr", "", '<td colspan="15"><div class="empty">Tháng này chưa có ca nào.</div></td>'));
+  else {
+    const trT = el("tr"); trT.style.cssText = "font-weight:700;background:var(--plane)";
+    trT.innerHTML = `<td colspan="11">Tổng ${ds.length} ca · ${R.dat} ca đạt điều kiện</td>
+      <td class="tnum r">${tongPhut}</td><td>${(tongPhut / 60).toFixed(2)} giờ</td>
+      <td class="tnum r">${fmtVND(R.gia)}</td><td class="tnum r">${fmtVND(tongTien)}</td>`;
+    tb.appendChild(trT);
+  }
+  t.appendChild(tb); wrap.appendChild(t); c.appendChild(wrap);
+  const b = el("div", "card-b");
+  b.appendChild(el("div", "sub", "Số phút Test đọc thẳng từ bản chép lời. "
+    + "Quy đổi: ca IELTS trên 50′ tính 60 phút, 35–50′ tính 45 phút, dưới 35′ tính đúng phút ghi hình; "
+    + "ca Kids & Giao tiếp từ 35′ trở lên tính 45 phút, dưới 35′ tính đúng phút ghi hình. "
+    + "Đơn giá: dưới 30 giờ/tháng 80.000₫/giờ, từ 30 giờ trở lên 90.000₫/giờ."));
+  c.appendChild(b);
+  v.appendChild(c);
+}
+/* dùng bảng mới thay bảng chi tiết cũ */
+function tsChiTiet(v, R, y, m) { return tsBangCa(v, R, y, m); }
+
+/* ---------- màn Công tester: bỏ cột Phút được tính, thêm dòng Tổng, thêm BC hiệu quả ---------- */
+(function () {
+  const goc = viewCongTester;
+  viewCongTester = function (v) {
+    const r = goc.apply(this, arguments);
+    try {
+      const y = +(S.tsNam || TODAY.getFullYear());
+      const m = +(S.tsThang == null ? TODAY.getMonth() : S.tsThang);
+      /* bỏ cột "Phút được tính" ở bảng công vì nó chính là phút ghi hình */
+      const t = v.querySelector("table");
+      if (t) {
+        const ths = [...t.querySelectorAll("thead th")];
+        const i = ths.findIndex(x => /PHÚT QUY ĐỔI|PHÚT ĐƯỢC TÍNH/i.test(x.innerText));
+        if (i >= 0) {
+          ths[i].innerText = "Phút ghi hình";
+          /* dòng tổng */
+          const tb = t.querySelector("tbody");
+          if (tb && !tb._tong) {
+            tb._tong = 1;
+            const ds = (myRole() === "tester" ? [me()] : TESTERS.filter(u => u.active)).map(u => tsGomThang(u, y, m));
+            const tr = el("tr"); tr.style.cssText = "font-weight:700;background:var(--plane)";
+            const n = ths.length;
+            const o = ds.reduce((s, x) => ({ ca: s.ca + x.ts.length, dat: s.dat + x.dat, phut: s.phut + x.phut, tien: s.tien + x.tien }),
+              { ca: 0, dat: 0, phut: 0, tien: 0 });
+            const cells = new Array(n).fill("<td></td>");
+            cells[1] = "<td><b>TỔNG " + ds.length + " tester</b></td>";
+            cells[3] = '<td class="tnum r">' + o.ca + "</td>";
+            cells[4] = '<td class="tnum r">' + o.dat + "</td>";
+            cells[6] = '<td class="tnum r">' + o.phut + "</td>";
+            cells[7] = '<td class="tnum r">' + (o.phut / 60).toFixed(2) + "</td>";
+            cells[n - 1] = '<td class="tnum r">' + fmtVND(o.tien) + "</td>";
+            tr.innerHTML = cells.join("");
+            tb.appendChild(tr);
+          }
+        }
+      }
+      veBCHieuQua(v, y, m);
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* ================= 13. phiếu tester đúng cột A→L ================= */
+function moPhieuKQ(id, chiXem) {
+  const T = TESTS.find(x => x.id === id);
+  if (!T) return;
+  const k = khOf(T.khId) || {};
+  const xem = chiXem ? 1 : (myRole() === "tester" || myRole() === "admin" ? 0 : 1);
+  const w = $("#cotwrap"); if (!w) return;
+  w.innerHTML = ""; w.classList.add("on");
+
+  const c = el("div", "cot-card"); c.style.cssText = "max-width:900px";
+  const h = el("div", "cot-h");
+  h.innerHTML = '<span class="pi">📝</span><b>Trả kết quả ca test — ' + esc(k.hoTenHV || "") + "</b>";
+  h.appendChild(el("div", "grow"));
+  const x = el("button", "btn sm", "Đóng"); x.onclick = () => w.classList.remove("on"); h.appendChild(x);
+  c.appendChild(h);
+  const b = el("div", "cot-b");
+
+  /* --- A · B · C · D · E · I · K · L : web tự điền --- */
+  const tuDong = el("div", "card"); tuDong.style.cssText = "box-shadow:none;border:1px solid var(--border)";
+  const td = el("div", "card-b");
+  td.appendChild(el("div", "", "<b>Web tự điền từ dữ liệu Sales / CSKH — tester không phải gõ</b>"));
+  const kv = el("div", "khm-kv"); kv.style.marginTop = "8px";
+  kv.innerHTML = `<div class="kl">A · Ngày Tester điền</div><div>${T.filledAt ? esc(fmtD(T.filledAt))
+    : '<span class="sub">tự ghi vào lúc bấm Lưu kết quả</span>'}</div>
+    <div class="kl">B · Ngày test</div><div><b>${esc(fmtD(T.date))}</b></div>
+    <div class="kl">C · Giờ test</div><div><b>${esc(T.gio || "—")}</b></div>
+    <div class="kl">D · Họ và tên học viên</div><div><b>${esc(k.hoTenHV || "—")}</b></div>
+    <div class="kl">E · SĐT</div><div class="tnum">${esc(k.phone || "—")}</div>
+    <div class="kl">I · Loại ca test</div><div><span class="chip ok">${caLoai(T)}</span>
+      <span class="sub">từ Khóa học đang tư vấn: ${esc(caKhoaHoc(T) || "—")}</span></div>
+    <div class="kl">K · Người tư vấn</div><div>${esc(caNguoiTuVan(T))}</div>
+    <div class="kl">L · Số phút Test</div><div>${T.bcl && T.bcl.phut
+      ? "<b>" + T.bcl.phut + " phút</b> <span class=\"sub\">(đọc từ bản chép lời)</span>"
+      : '<span class="chip dg">chưa có — tải bản chép lời lên là tự hiện</span>'}</div>
+    <div class="kl">Thông tin ca test</div><div class="sub">${esc(caThongTin(T) || "—")}</div>`;
+  td.appendChild(kv);
+  tuDong.appendChild(td); b.appendChild(tuDong);
+
+  const loi = el("div", "warnbar dg"); loi.style.display = "none";
+  b.appendChild(loi);
+
+  const o = (nhan, giaTri, ph) => {
+    const r = el("div"); r.style.margin = "12px 0 0";
+    r.appendChild(el("label", "", esc(nhan) + ' <span style="color:var(--critical)">*</span>'));
+    const i = el("input"); i.type = "text"; i.value = giaTri || ""; i.placeholder = ph || "";
+    i.style.cssText = "width:100%;margin-top:4px";
+    if (xem) i.disabled = true;
+    r.appendChild(i); b.appendChild(r); return i;
+  };
+  const iVideo = o("F · Link Video test", T.video, "https://teams.microsoft.com/rec/…");
+  const iKQ = o("G · Link kết quả", T.linkKQ, "https://drive.google.com/…");
+
+  /* H · bản chép lời */
+  const hopBCL = el("div"); hopBCL.style.margin = "12px 0 0";
+  hopBCL.appendChild(el("label", "", 'H · Bản chép lời .vtt <span style="color:var(--critical)">*</span>'));
+  const veBCL = () => {
+    [...hopBCL.querySelectorAll(".the-bcl")].forEach(e => e.remove());
+    const t2 = bclThe(T, () => moPhieuKQ(id, chiXem));
+    t2.classList.add("the-bcl");
+    hopBCL.appendChild(t2);
+  };
+  veBCL(); b.appendChild(hopBCL);
+
+  /* J · trình độ đầu vào */
+  let chon = Array.isArray(T.kqVao) ? T.kqVao.slice() : (T.ketQuaVao ? [T.ketQuaVao] : []);
+  const hopKQ = el("div"); hopKQ.style.margin = "14px 0 0";
+  hopKQ.appendChild(el("label", "", 'J · Trình độ đầu vào <span style="color:var(--critical)">*</span> <span class="sub">— tester tick, chọn được nhiều</span>'));
+  const rowKQ = el("div", "row"); rowKQ.style.cssText = "gap:7px;margin-top:7px;flex-wrap:wrap";
+  const veKQ = () => {
+    rowKQ.innerHTML = "";
+    KQ_VAO.forEach(([ten]) => {
+      const bt = kqChip(ten, chon.indexOf(ten) >= 0);
+      if (xem) bt.disabled = true;
+      else bt.onclick = () => { const i = chon.indexOf(ten); if (i >= 0) chon.splice(i, 1); else chon.push(ten); veKQ(); };
+      rowKQ.appendChild(bt);
+    });
+  };
+  veKQ(); hopKQ.appendChild(rowKQ); b.appendChild(hopKQ);
+
+  const rKhac = el("div"); rKhac.style.margin = "12px 0 0";
+  rKhac.appendChild(el("label", "", 'Khác <span class="sub">(không bắt buộc)</span>'));
+  const iKhac = el("input"); iKhac.type = "text"; iKhac.value = T.kqKhac || "";
+  iKhac.placeholder = "Ghi chú thêm về học viên, thiết bị, đường truyền…";
+  iKhac.style.cssText = "width:100%;margin-top:4px";
+  if (xem) iKhac.disabled = true;
+  rKhac.appendChild(iKhac); b.appendChild(rKhac);
+
+  if (T.kqEp) {
+    b.appendChild(el("div", "warnbar wn",
+      "<span>⚠</span><span><b>Ca này đã lưu dù web còn lăn tăn.</b><br>" + esc(T.kqEp.vi)
+      + "<br>Người lưu: " + esc(userOf(T.kqEp.by).name || "") + " · " + esc(fmtD(T.kqEp.t))
+      + ". Kế toán sẽ soát lại.</span>"));
+  }
+
+  if (!xem) {
+    const bLuu = el("button", "btn pri", "Lưu kết quả");
+    bLuu.style.cssText = "margin-top:16px;padding:10px 22px;font-size:15px";
+    let daHoi = "";
+    bLuu.onclick = () => {
+      const thieu = [];
+      if (!String(iVideo.value || "").trim()) thieu.push("F · Link Video test");
+      if (!T.bcl) thieu.push("H · Bản chép lời .vtt");
+      if (!String(iKQ.value || "").trim()) thieu.push("G · Link kết quả");
+      if (!chon.length) thieu.push("J · Trình độ đầu vào");
+      if (thieu.length) {
+        loi.style.display = "";
+        loi.innerHTML = "<span>⛔</span><span><b>Chưa lưu được — còn thiếu:</b> " + esc(thieu.join(" · ")) + "</span>";
+        loi.scrollIntoView({ block: "center" });
+        return;
+      }
+      T.video = String(iVideo.value).trim();
+      T.linkKQ = String(iKQ.value).trim();
+      const vd = kqLoiBCL(T);
+      if (vd && daHoi !== vd) {
+        daHoi = vd;
+        loi.style.display = "";
+        loi.innerHTML = "<span>⛔</span><span><b>Web thấy bản chép lời chưa khớp ca này:</b><br>"
+          + esc(vd) + "<br><br>Xem lại rồi tải đúng tệp của buổi này lên. "
+          + "<b>Nếu bạn chắc chắn tệp đã đúng, bấm một lần nữa</b> — web vẫn lưu, "
+          + "và báo riêng ở mục Công tester để kế toán soát lại.</span>";
+        loi.scrollIntoView({ block: "center" });
+        bLuu.textContent = "Tôi chắc chắn — vẫn lưu";
+        return;
+      }
+      if (vd) T.kqEp = { by: S.me, t: iso(TODAY), gio: new Date().toTimeString().slice(0, 5), vi: vd };
+      else delete T.kqEp;
+      T.kqVao = chon.slice();
+      T.ketQuaVao = chon.join(" · ");
+      T.kqKhac = String(iKhac.value || "").trim();
+      if (T.bcl && T.bcl.phut) T.phutHoc = T.bcl.phut;
+      T.filledAt = iso(TODAY);
+      if (T.status !== "absent") T.status = "done";
+      persist();
+      w.classList.remove("on");
+      toast(vd ? "Đã lưu — ca được báo riêng cho kế toán soát" : "Đã lưu kết quả — đã chuyển sang kế toán");
+      render();
+    };
+    b.appendChild(bLuu);
+    b.appendChild(el("div", "sub", "Lưu xong phiếu này chuyển sang bên kế toán để chấm công."));
+  }
+
+  c.appendChild(b); w.appendChild(c);
+}
+/* ============================================================================
+   v78 phần bù — QL vào duyệt ca khi kế toán nhờ (mục 11), mà KHÔNG thấy tiền (mục 8)
+   ------------------------------------------------------------------------- */
+
+/* các ca kế toán đang nhờ quản lý duyệt */
+function qlViecDuyet() {
+  try { return (TESTS || []).filter(T => T && T.qlCan && !T.qlDuyet); } catch (e) { return []; }
+}
+function qlDangCanVao() { return myRole() === "ql" && qlViecDuyet().length > 0; }
+
+/* menu: QL chỉ thấy "Công tester" khi có ca kế toán nhờ duyệt, kèm số đếm */
+(function () {
+  const goc = navFor;
+  navFor = function () {
+    const gs = goc.apply(this, arguments);
+    if (!qlDangCanVao()) return gs;
+    if (gs.some(g => g.items.some(i => i.id === "congtester"))) return gs;
+    let goc2 = null;
+    NAVDEF.forEach(g => g.items.forEach(i => { if (i.id === "congtester") goc2 = i; }));
+    if (!goc2) return gs;
+    const muc = Object.assign({}, goc2, {
+      name: "Ca chờ QL duyệt", badge: () => qlViecDuyet().length, warn: 1
+    });
+    const ra = gs.map(g => Object.assign({}, g, { items: g.items.slice() }));
+    const nhom = ra.find(g => /test|công|Test/i.test(g.g)) || ra[ra.length - 1];
+    if (nhom) nhom.items.push(muc); else ra.push({ g: "Ca test", items: [muc] });
+    return ra;
+  };
+})();
+
+/* không cho màn hình bị đẩy về dash khi QL đang có việc duyệt */
+(function () {
+  const goc = viewChuan;
+  viewChuan = function () {
+    const muon = S.view === "congtester" && qlDangCanVao();
+    const r = goc.apply(this, arguments);
+    if (muon) { S.view = "congtester"; }
+    return r;
+  };
+})();
+
+/* QL mở màn công tester: che hết cột tiền, chỉ để lại phần duyệt */
+(function () {
+  const goc = viewCongTester;
+  viewCongTester = function (v) {
+    const laQL = myRole() === "ql";
+    const r = goc.apply(this, arguments);
+    if (!laQL) return r;
+    try {
+      /* bỏ dải quy chế (có đơn giá) */
+      [...v.querySelectorAll(".warnbar")].forEach(w => {
+        if (/Quy chế tính công/.test(w.innerText)) w.remove();
+      });
+      const nhac = el("div", "warnbar wn");
+      nhac.innerHTML = "<span>🛡️</span><span>Quản lý chỉ vào đây để <b>duyệt hộ kế toán</b> "
+        + (qlViecDuyet().length ? "(" + qlViecDuyet().length + " ca đang nhờ)" : "")
+        + ". <b>Đơn giá và tiền công được ẩn</b> — phần tiền chỉ Ban điều hành và Kế toán xem.</span>";
+      v.insertBefore(nhac, v.firstChild);
+      /* che mọi ô thuộc cột tiền */
+      [...v.querySelectorAll("table")].forEach(t => {
+        const th = [...t.querySelectorAll("thead th")];
+        const che = [];
+        th.forEach((h, i) => { if (/đơn giá|thành tiền|tiền công|^tiền$|rate/i.test(h.innerText.trim())) che.push(i); });
+        if (!che.length) return;
+        [...t.querySelectorAll("tbody tr")].forEach(tr => {
+          che.forEach(i => { const o = tr.children[i]; if (o) { o.innerHTML = '<span class="muted">—</span>'; } });
+        });
+      });
+    } catch (e) { }
+    return r;
+  };
+})();
+/* ============================================================================
+   v79 — bốn mục còn lại trong danh sách 14 mục
+   2. Soát tỉnh & lớp của khách đã nhập từ tệp
+   5. Quản lý phòng ban (sơ đồ tổ chức) + phiếu Thêm mới người dùng
+   6. Sửa thông tin đặt lịch (đổi tester / ngày / giờ, báo trùng lịch)
+   9. Nút "Có ace cùng học" trước mẫu L5
+   ========================================================================= */
+
+/* tên bộ phận đọc theo bảng VAI_CHON (rộng hơn ROLES) */
+function vaiTen(id) {
+  try {
+    const x = VAI_CHON.find(v => v[0] === id);
+    if (x) return x[1];
+  } catch (e) { }
+  try { return roleOf(id).name; } catch (e) { return id || ""; }
+}
+
+/* ================= 0. hộp thoại chung ================= */
+function pbDong() {
+  const w = document.getElementById("pbm");
+  if (w) { w.classList.remove("on"); w.innerHTML = ""; }
+}
+function pbMo(tieu, phu, ico) {
+  const w = document.getElementById("pbm");
+  if (!w) return null;
+  w.innerHTML = "";
+  const card = el("div", "khm-card"); card.style.width = "min(760px,96vw)";
+  const h = el("div", "khm-h");
+  h.innerHTML = '<span class="pi">' + (ico || "🏢") + '</span><div><div class="khm-ten">'
+    + esc(tieu) + '</div><div class="khm-sub">' + esc(phu || "") + "</div></div>";
+  const bx = el("button", "btn sm", "Đóng"); bx.onclick = pbDong;
+  h.appendChild(el("div", "grow")); h.appendChild(bx);
+  card.appendChild(h);
+  const b = el("div");
+  b.style.cssText = "padding:16px 18px;overflow:auto;display:flex;flex-direction:column;gap:11px;max-height:74vh";
+  card.appendChild(b);
+  w.appendChild(card);
+  w.classList.add("on");
+  w.onclick = e => { if (e.target === w) pbDong(); };
+  card.onclick = e => e.stopPropagation();
+  return b;
+}
+addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  const w = document.getElementById("pbm");
+  if (w && w.classList.contains("on")) pbDong();
+});
+/* một dòng nhập trong hộp thoại */
+function pbO(box, nhan, o, goiY) {
+  const r = el("div");
+  r.appendChild(el("div", "sub", nhan));
+  r.appendChild(o);
+  if (goiY) r.appendChild(el("div", "sub", goiY));
+  box.appendChild(r);
+  return o;
+}
+function pbInput(gt, ph) {
+  const i = el("input"); i.type = "text"; i.style.width = "100%";
+  i.value = gt == null ? "" : gt; i.placeholder = ph || "";
+  i.autocomplete = "off";
+  return i;
+}
+function pbSelect(ds, gt) {
+  const s = el("select"); s.style.width = "100%";
+  (ds || []).forEach(x => s.appendChild(new Option(x[1], x[0])));
+  s.value = gt == null ? "" : gt;
+  return s;
+}
+
+/* ============================================================================
+   MỤC 5 — QUẢN LÝ PHÒNG BAN
+   ========================================================================= */
+const PB_MAC_DINH = [
+  { id: "PB1", ten: "Trung tâm Anh ngữ ALES", cha: "", vai: "", mota: "Toàn trung tâm" },
+  { id: "PB2", ten: "Ban điều hành", cha: "PB1", vai: "admin" },
+  { id: "PB3", ten: "Phòng Marketing", cha: "PB1", vai: "mkt" },
+  { id: "PB4", ten: "Phòng Sales", cha: "PB1", vai: "sales" },
+  { id: "PB5", ten: "Phòng CSKH", cha: "PB1", vai: "cskh" },
+  { id: "PB6", ten: "Phòng Học thuật & Tester", cha: "PB1", vai: "tester" },
+  { id: "PB7", ten: "Phòng Kế toán", cha: "PB1", vai: "ketoan" },
+  { id: "PB8", ten: "Phòng Hành chính – Nhân sự", cha: "PB1", vai: "hr" }
+];
+function pbDS() {
+  DB.PB = DB.PB || null;
+  if (!DB.PB || !DB.PB.length) {
+    DB.PB = PB_MAC_DINH.map(x => Object.assign({
+      diachi: "", thanhpho: "", dt: "", fax: "", laTeam: 0, ql: "", coso: "", target: 0, tep: [], link: ""
+    }, x));
+    /* các team đang có được xếp vào Phòng Sales */
+    try {
+      TEAMS.forEach(t => {
+        DB.PB.push({
+          id: "PB_" + t.id, ten: t.name, cha: "PB4", vai: "sales", laTeam: 1, teamId: t.id,
+          ql: t.ql || "", coso: t.coso || "", target: t.target || 0,
+          diachi: "", thanhpho: "", dt: "", fax: "", mota: "", tep: [], link: ""
+        });
+      });
+    } catch (e) { }
+  }
+  return DB.PB;
+}
+const pbOf = id => pbDS().find(x => x.id === id) || null;
+const pbConCua = id => pbDS().filter(x => x.cha === id);
+function pbGoc() { return pbDS().filter(x => !x.cha || !pbOf(x.cha)); }
+/* đường dẫn "Trung tâm › Phòng Sales › TEAM HUỆ" */
+function pbDuong(id) {
+  const ra = []; let x = pbOf(id), n = 0;
+  while (x && n++ < 12) { ra.unshift(x.ten); x = x.cha ? pbOf(x.cha) : null; }
+  return ra.join(" › ");
+}
+/* người của một phòng ban (theo team nếu là team, theo vai nếu là phòng) */
+function pbNguoi(p) {
+  if (!p) return [];
+  if (p.laTeam && p.teamId) return USERS.filter(u => u.active && u.team === p.teamId);
+  if (p.vai) return USERS.filter(u => u.active && u.role === p.vai && !u.team);
+  return [];
+}
+function pbTongNguoi(p) {
+  let n = pbNguoi(p).length;
+  pbConCua(p.id).forEach(c => { n += pbTongNguoi(c); });
+  return n;
+}
+/* phòng ban là team thì phải có mặt trong TEAMS để hiện ở MỌI ô chọn Team */
+function pbApDung() {
+  try {
+    pbDS().forEach(p => {
+      if (!p.laTeam) return;
+      p.teamId = p.teamId || ("T_" + p.id);
+      const co = TEAMS.find(t => t.id === p.teamId);
+      if (co) { co.name = p.ten; co.coso = p.coso || co.coso; co.ql = p.ql || co.ql; co.target = +p.target || co.target || 0; }
+      else TEAMS.push({ id: p.teamId, name: p.ten, coso: p.coso || "", ql: p.ql || null, target: +p.target || 0 });
+      /* quản lý được gán đúng team của mình */
+      if (p.ql) { const u = userOf(p.ql); if (u && u.id) u.team = p.teamId; }
+    });
+    /* team đã bị xoá khỏi phòng ban thì rút khỏi TEAMS, trừ team gốc T1–T4 */
+    for (let i = TEAMS.length - 1; i >= 0; i--) {
+      const t = TEAMS[i];
+      if (/^T\d+$/.test(t.id)) continue;
+      if (!pbDS().some(p => p.laTeam && p.teamId === t.id)) TEAMS.splice(i, 1);
+    }
+  } catch (e) { }
+}
+function pbLuu() { persist(); pbApDung(); }
+
+/* ---------- hộp thoại Thêm / Sửa phòng ban ---------- */
+function moThemPB(id) {
+  const sua = id ? pbOf(id) : null;
+  const box = pbMo(sua ? "Sửa phòng ban" : "Thêm mới phòng ban",
+    sua ? pbDuong(sua.id) : "Điền thông tin phòng ban / team mới", "🏢");
+  if (!box) return;
+  const F = Object.assign({
+    ten: "", cha: sua ? "" : "PB1", vai: "", laTeam: 0, ql: "", coso: "", target: 0,
+    diachi: "", thanhpho: "", dt: "", fax: "", mota: "", link: "", tep: []
+  }, sua || {});
+
+  const loi = el("div", "warnbar dg"); loi.style.display = "none"; box.appendChild(loi);
+
+  const iTen = pbO(box, "Tên phòng ban *", pbInput(F.ten, "VD: Team QL MKT B"));
+  const dsCha = pbDS().filter(x => !sua || (x.id !== sua.id && pbDuong(x.id).indexOf(sua.ten) < 0))
+    .map(x => [x.id, pbDuong(x.id)]);
+  const sCha = pbO(box, "Trực thuộc", pbSelect([["", "— không trực thuộc ai (cấp cao nhất) —"]].concat(dsCha), F.cha),
+    "Chọn phòng ban cấp trên. Sơ đồ tổ chức xếp theo mục này.");
+
+  const sVai = pbO(box, "Bộ phận (dùng để gom nhân sự)",
+    pbSelect([["", "— không gom theo bộ phận —"]].concat(VAI_CHON.map(v => [v[0], v[1]])), F.vai));
+
+  /* là team hay không */
+  const rTeam = el("div", "note-box");
+  const cb = el("input"); cb.type = "checkbox"; cb.checked = !!F.laTeam;
+  const lb = el("label"); lb.style.cssText = "display:flex;gap:8px;align-items:flex-start;cursor:pointer";
+  lb.appendChild(cb);
+  lb.appendChild(el("span", null, "<b>Đây là một TEAM có quản lý</b><br><span class=\"sub\">Tích vào đây thì tên này "
+    + "xuất hiện luôn trong <b>mọi ô chọn Team</b> — thêm nhân sự, phân quyền, báo cáo team, lọc khách hàng.</span>"));
+  rTeam.appendChild(lb);
+  box.appendChild(rTeam);
+
+  const hopTeam = el("div"); hopTeam.style.cssText = "display:flex;flex-direction:column;gap:11px";
+  const sQL = pbO(hopTeam, "Quản lý phụ trách",
+    pbSelect([["", "— chưa có —"]].concat(USERS.filter(u => u.active).map(u => [u.id, u.name + " · " + vaiTen(u.role)])), F.ql));
+  const sCS = pbO(hopTeam, "Cơ sở", pbSelect([["", "— chưa gán —"]].concat(COSO.map(c => [c.id, c.name])), F.coso));
+  const iTar = pbO(hopTeam, "Chỉ tiêu doanh thu tháng (₫)", pbInput(F.target || "", "VD: 250000000"));
+  box.appendChild(hopTeam);
+  const doiTeam = () => { hopTeam.style.display = cb.checked ? "" : "none"; };
+  cb.onchange = doiTeam; doiTeam();
+
+  const iDC = pbO(box, "Địa chỉ", pbInput(F.diachi, "VD: 25 Hoàng Văn Thái"));
+  const iTP = pbO(box, "Thành phố", pbInput(F.thanhpho, "VD: Hà Nội"));
+  const iDT = pbO(box, "Điện thoại", pbInput(F.dt, "VD: 0246 xxx xxx"));
+  const iFax = pbO(box, "Fax", pbInput(F.fax, "Để trống nếu không có"));
+  const iMT = el("textarea"); iMT.rows = 3; iMT.style.width = "100%"; iMT.value = F.mota || "";
+  iMT.placeholder = "VD: Phụ trách chạy quảng cáo mảng IELTS khu vực miền Bắc";
+  pbO(box, "Mô tả", iMT);
+
+  /* tài liệu đính kèm */
+  const iLink = pbO(box, "Tài liệu đính kèm — link Google Drive", pbInput(F.link, "https://drive.google.com/…"),
+    "Web không tải tệp lên kho (kho phải nhẹ). Dán link Drive, hoặc chọn tệp bên dưới để ghi lại tên tệp.");
+  const dsTep = (F.tep || []).slice();
+  const veTep = el("div", "sub"); veTep.style.marginTop = "4px";
+  const inTep = () => {
+    veTep.innerHTML = dsTep.length
+      ? dsTep.map((t, i) => "📄 " + esc(t.ten) + " · " + Math.round((t.co || 0) / 1024) + " KB"
+        + ' <a href="#" data-i="' + i + '">bỏ</a>').join("<br>")
+      : "Chưa ghi tệp nào.";
+    [...veTep.querySelectorAll("a")].forEach(a => {
+      a.onclick = e => { e.preventDefault(); dsTep.splice(+a.dataset.i, 1); inTep(); };
+    });
+  };
+  const iFile = el("input"); iFile.type = "file"; iFile.multiple = true;
+  iFile.onchange = () => {
+    [...(iFile.files || [])].forEach(f => dsTep.push({ ten: f.name, co: f.size, luc: iso(TODAY) }));
+    iFile.value = ""; inTep();
+  };
+  const rF = el("div"); rF.appendChild(el("div", "sub", "Chọn tệp để ghi lại tên")); rF.appendChild(iFile);
+  rF.appendChild(veTep); box.appendChild(rF); inTep();
+
+  const ft = el("div", "row"); ft.style.cssText = "gap:8px;margin-top:6px;flex-wrap:wrap";
+  const bLuu = el("button", "btn pri", sua ? "Lưu thay đổi" : "Thêm phòng ban");
+  bLuu.onclick = () => {
+    const ten = iTen.value.trim();
+    if (!ten) { loi.style.display = ""; loi.textContent = "Chưa điền Tên phòng ban."; return; }
+    if (pbDS().some(x => x.ten.toLowerCase() === ten.toLowerCase() && (!sua || x.id !== sua.id))) {
+      loi.style.display = ""; loi.textContent = "Đã có phòng ban tên “" + ten + "”. Đặt tên khác."; return;
+    }
+    const goi = {
+      ten, cha: sCha.value, vai: sVai.value, laTeam: cb.checked ? 1 : 0,
+      ql: cb.checked ? sQL.value : "", coso: cb.checked ? sCS.value : "",
+      target: cb.checked ? (+String(iTar.value).replace(/\D/g, "") || 0) : 0,
+      diachi: iDC.value.trim(), thanhpho: iTP.value.trim(), dt: iDT.value.trim(),
+      fax: iFax.value.trim(), mota: iMT.value.trim(), link: iLink.value.trim(), tep: dsTep
+    };
+    if (sua) Object.assign(sua, goi);
+    else {
+      const id = "PB" + (1000 + pbDS().length);
+      pbDS().push(Object.assign({ id, teamId: cb.checked ? "T_" + id : "" }, goi));
+    }
+    pbLuu();
+    toast(sua ? "Đã lưu phòng ban" : "Đã thêm phòng ban “" + ten + "”"
+      + (cb.checked ? " — team này đã có trong mọi ô chọn Team" : ""));
+    pbDong(); render();
+  };
+  ft.appendChild(bLuu);
+  if (sua) {
+    const bXoa = el("button", "btn dg", "Xoá phòng ban này");
+    bXoa.onclick = () => {
+      if (pbConCua(sua.id).length) { toast("Còn phòng ban con bên dưới — xoá hoặc chuyển chúng đi trước."); return; }
+      const n = pbNguoi(sua).length;
+      if (n) { toast("Còn " + n + " người thuộc phòng này — chuyển họ sang nơi khác trước."); return; }
+      if (!confirm("Xoá phòng ban “" + sua.ten + "”?")) return;
+      const i = pbDS().findIndex(x => x.id === sua.id);
+      if (i >= 0) pbDS().splice(i, 1);
+      pbLuu(); toast("Đã xoá"); pbDong(); render();
+    };
+    ft.appendChild(bXoa);
+  }
+  const bT = el("button", "btn", "Đóng"); bT.onclick = pbDong;
+  ft.appendChild(el("div", "grow")); ft.appendChild(bT);
+  box.appendChild(ft);
+}
+
+/* ---------- màn hình Quản lý phòng ban ---------- */
+Object.assign(TITLES, { phongban: "Quản lý phòng ban" });
+function viewPhongBan(v) {
+  pbApDung();
+  const sua = ["admin", "hr"].indexOf(myRole()) >= 0;
+  const bThem = el("button", "btn pri", "+ Thêm mới phòng ban");
+  bThem.onclick = () => moThemPB();
+  const bNg = el("button", "btn", "+ Thêm mới người dùng");
+  bNg.onclick = () => moThemNguoiDung();
+  pageHead(v, "🏢", "Quản lý phòng ban", sua ? [bThem, bNg] : []);
+
+  const w = el("div", "warnbar wn");
+  w.innerHTML = "<span>🏢</span><span>Thêm một phòng ban và tích <b>“Đây là một TEAM có quản lý”</b> thì tên đó "
+    + "<b>tự xuất hiện trong mọi ô chọn Team</b> — Thêm mới người dùng, Nhân sự &amp; tài khoản, lọc khách hàng, báo cáo team.</span>";
+  v.appendChild(w);
+
+  /* sơ đồ tổ chức */
+  const c = el("div", "card");
+  c.appendChild(el("div", "card-h", "<h3>Sơ đồ tổ chức</h3><span class=\"sub\">"
+    + pbDS().length + " phòng ban · " + USERS.filter(u => u.active).length + " người đang làm việc</span>"));
+  const b = el("div", "card-b");
+  const veNut = (p, muc) => {
+    const r = el("div", "pb-row");
+    r.style.cssText = "display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border:1px solid var(--border);"
+      + "border-radius:9px;margin:6px 0 6px " + (muc * 26) + "px;background:var(--panel)";
+    const ng = pbNguoi(p), tong = pbTongNguoi(p);
+    const ten = el("div"); ten.style.flex = "1";
+    ten.innerHTML = "<b>" + esc(p.ten) + "</b> "
+      + (p.laTeam ? '<span class="chip ok">TEAM</span>' : "")
+      + (p.vai ? ' <span class="chip">' + esc(vaiTen(p.vai)) + "</span>" : "")
+      + '<div class="sub">' + (p.laTeam && p.ql ? "Quản lý: <b>" + esc(userOf(p.ql).name || "—") + "</b> · " : "")
+      + (p.coso ? "cơ sở " + esc((COSO.find(x => x.id === p.coso) || {}).name || p.coso) + " · " : "")
+      + tong + " người" + (ng.length && ng.length !== tong ? " (trực tiếp " + ng.length + ")" : "")
+      + (p.thanhpho ? " · " + esc(p.thanhpho) : "")
+      + (p.dt ? " · ☎ " + esc(p.dt) : "")
+      + "</div>"
+      + (p.mota ? '<div class="sub">' + esc(p.mota) + "</div>" : "")
+      + (p.link ? '<div class="sub">📄 <a href="' + esc(p.link) + '" target="_blank" rel="noopener">tài liệu đính kèm</a></div>' : "")
+      + ((p.tep || []).length ? '<div class="sub">📄 ' + (p.tep || []).map(t => esc(t.ten)).join(" · ") + "</div>" : "")
+      + (ng.length ? '<div class="sub">' + ng.map(u => esc(u.name)).join(" · ") + "</div>" : "");
+    r.appendChild(ten);
+    if (sua) {
+      const bs = el("button", "btn sm", "✎ Sửa"); bs.onclick = () => moThemPB(p.id);
+      const bc = el("button", "btn sm", "+ Thêm cấp dưới");
+      bc.onclick = () => { moThemPB(); setTimeout(() => { const s = document.querySelector("#pbm select"); if (s) s.value = p.id; }, 0); };
+      const h = el("div", "row"); h.style.gap = "6px"; h.appendChild(bs); h.appendChild(bc);
+      r.appendChild(h);
+    }
+    b.appendChild(r);
+    pbConCua(p.id).forEach(x => veNut(x, muc + 1));
+  };
+  pbGoc().forEach(p => veNut(p, 0));
+  if (!pbDS().length) b.appendChild(el("div", "empty", "Chưa có phòng ban nào."));
+  c.appendChild(b); v.appendChild(c);
+
+  /* bảng người chưa vào phòng ban nào */
+  const lac = USERS.filter(u => u.active && !pbDS().some(p => pbNguoi(p).some(x => x.id === u.id)));
+  if (lac.length) {
+    const c2 = el("div", "card"); c2.style.marginTop = "10px";
+    c2.appendChild(el("div", "card-h", "<h3>Chưa xếp vào phòng ban nào — " + lac.length + " người</h3>"
+      + '<span class="sub">thường là người đã có Team riêng hoặc vai trò chưa gắn phòng</span>'));
+    const b2 = el("div", "card-b");
+    b2.appendChild(el("div", "sub", lac.map(u => esc(u.name) + " (" + esc(vaiTen(u.role)) + ")").join(" · ")));
+    c2.appendChild(b2); v.appendChild(c2);
+  }
+}
+VIEWS.phongban = () => viewPhongBan;
+(function () {
+  try {
+    if (!PERM_KEYS.some(p => p.k === "phongban"))
+      PERM_KEYS.push({ k: "phongban", n: "Quản lý phòng ban (sơ đồ tổ chức, thêm phòng ban / team)" });
+    ["admin", "hr"].forEach(r => {
+      if (PERM_MAC_DINH[r] && PERM_MAC_DINH[r] !== "*" && PERM_MAC_DINH[r].indexOf("phongban") < 0)
+        PERM_MAC_DINH[r] += ",phongban";
+    });
+    let nhom = NAVDEF.find(g => g.items.some(i => i.id === "phanquyen")) || NAVDEF[NAVDEF.length - 1];
+    if (nhom && !nhom.items.some(i => i.id === "phongban"))
+      nhom.items.push({ id: "phongban", ico: "🏢", name: "Quản lý phòng ban", roles: "admin,hr" });
+  } catch (e) { }
+})();
+
+/* ---------- phiếu Thêm mới người dùng ---------- */
+function nsMaMoi() {
+  let n = USERS.length + 1;
+  while (USERS.some(u => u.id === "U" + n)) n++;
+  return "U" + n;
+}
+function moThemNguoiDung(uid) {
+  const sua = uid ? userOf(uid) : null;
+  const box = pbMo(sua ? "Sửa thông tin người dùng" : "Thêm mới người dùng",
+    sua ? sua.name : "Điền thông tin nhân sự mới của trung tâm", "👤");
+  if (!box) return;
+  const loi = el("div", "warnbar dg"); loi.style.display = "none"; box.appendChild(loi);
+  const kq = el("div"); box.appendChild(kq);
+
+  const iTen = pbO(box, "Họ và tên *", pbInput(sua ? sua.name : "", "VD: Nguyễn Thị Minh Anh"));
+  const iMa = pbO(box, "Mã tài khoản", pbInput(sua ? sua.id : nsMaMoi(), ""), "Web tự sinh, không cần sửa.");
+  iMa.disabled = true; iMa.style.opacity = ".7";
+  const iEmail = pbO(box, "Email", pbInput(sua ? sua.email || "" : "", "VD: minhanh@ales.edu.vn"));
+  const iDT = pbO(box, "Điện thoại", pbInput(sua ? sua.dt || "" : "", "VD: 0912 345 678"));
+  const sVai = pbO(box, "Bộ phận / Vai trò *", pbSelect(VAI_CHON.map(v => [v[0], v[1]]), sua ? sua.role : "sales"));
+  const sPB = pbO(box, "Phòng ban", pbSelect([["", "— chưa xếp —"]].concat(pbDS().map(p => [p.id, pbDuong(p.id)])),
+    sua ? sua.pb || "" : ""));
+  const sTeam = pbO(box, "Team", pbSelect([["", "— không thuộc team nào —"]].concat(TEAMS.map(t => [t.id, t.name])),
+    sua ? sua.team || "" : ""), "Danh sách này lấy từ Quản lý phòng ban — thêm team mới ở đó là hiện ngay tại đây.");
+  const sCS = pbO(box, "Cơ sở", pbSelect([["", "— chưa gán —"]].concat(COSO.map(c => [c.id, c.name])),
+    sua ? sua.coso || "" : ""));
+  const iCD = pbO(box, "Chức danh", pbInput(sua ? sua.chucdanh || "" : "", "VD: Chuyên viên tư vấn"));
+  const sQL = pbO(box, "Quản lý trực tiếp",
+    pbSelect([["", "— chưa có —"]].concat(USERS.filter(u => u.active && (!sua || u.id !== sua.id))
+      .map(u => [u.id, u.name + " · " + vaiTen(u.role)])), sua ? sua.qltt || "" : ""));
+  const iVao = el("input"); iVao.type = "date"; iVao.style.width = "100%";
+  iVao.value = sua ? sua.ngayVao || "" : iso(TODAY);
+  pbO(box, "Ngày vào làm", iVao);
+  const iGV = pbO(box, "Mã giáo viên (chỉ Tester)", pbInput(sua ? sua.gv || "" : "", "VD: GV21"));
+  const iTar = pbO(box, "Chỉ tiêu doanh thu tháng (₫)", pbInput(sua ? sua.target || "" : "", "Để trống nếu không có"));
+  const iMK = pbO(box, "Mật khẩu", pbInput(mkGoiY(), ""),
+    "Gửi riêng cho bạn ấy qua tin nhắn — không đăng lên nhóm chung.");
+  const iGC = el("textarea"); iGC.rows = 2; iGC.style.width = "100%"; iGC.value = sua ? sua.ghichu || "" : "";
+  pbO(box, "Ghi chú", iGC);
+  const cbAct = el("input"); cbAct.type = "checkbox"; cbAct.checked = sua ? !!sua.active : true;
+  const lbAct = el("label"); lbAct.style.cssText = "display:flex;gap:8px;align-items:center;cursor:pointer";
+  lbAct.appendChild(cbAct); lbAct.appendChild(el("span", null, "<b>Đang hoạt động</b>"));
+  box.appendChild(lbAct);
+
+  const doiVai = () => { iGV.parentNode.style.display = sVai.value === "tester" ? "" : "none"; };
+  sVai.onchange = doiVai; doiVai();
+
+  const ft = el("div", "row"); ft.style.cssText = "gap:8px;margin-top:6px;flex-wrap:wrap";
+  const bLuu = el("button", "btn pri", sua ? "Lưu thay đổi" : "Thêm người dùng");
+  bLuu.onclick = async () => {
+    const ten = iTen.value.trim();
+    if (!ten) { loi.style.display = ""; loi.textContent = "Chưa điền Họ và tên."; return; }
+    if (!sua && USERS.some(u => u.name.trim().toLowerCase() === ten.toLowerCase())) {
+      loi.style.display = ""; loi.textContent = "Đã có người tên “" + ten + "” trong hệ thống."; return;
+    }
+    loi.style.display = "none";
+    const goi = {
+      name: ten, role: sVai.value, team: sTeam.value || null, coso: sCS.value || null,
+      pb: sPB.value || "", email: iEmail.value.trim(), dt: iDT.value.trim(),
+      chucdanh: iCD.value.trim(), qltt: sQL.value || "", ngayVao: iVao.value || "",
+      gv: sVai.value === "tester" ? iGV.value.trim() : "",
+      target: +String(iTar.value).replace(/\D/g, "") || 0,
+      ghichu: iGC.value.trim(), active: cbAct.checked ? 1 : 0
+    };
+    let u = sua;
+    if (u) Object.assign(u, goi);
+    else {
+      u = Object.assign({ id: nsMaMoi(), color: AVC[USERS.length % AVC.length] }, goi);
+      USERS.push(u);
+      if (u.role === "tester" && !TESTERS.some(x => x.id === u.id) && u.active) TESTERS.push(u);
+    }
+    DB.NS_THEM = DB.NS_THEM || {};
+    DB.NS_THEM[u.id] = goi;
+    /* mật khẩu riêng của máy này, để vào được ngay dù Apps Script chưa thông */
+    if (!sua && iMK.value.trim()) {
+      try { mkNhomSo(); DB.MKNHOM[u.id] = iMK.value.trim(); } catch (e) { }
+    }
+    persist(); pbApDung();
+    kq.innerHTML = '<div class="warnbar ok">✔ Đã lưu <b>' + esc(ten) + "</b> · mã tài khoản <b>" + esc(u.id)
+      + "</b>" + (iMK.value.trim() && !sua ? " · mật khẩu <b style=\"font-family:ui-monospace,monospace\">"
+        + esc(iMK.value.trim()) + "</b> — gửi riêng cho bạn ấy" : "") + "</div>";
+    /* đẩy sang kho, nếu Apps Script thông */
+    try {
+      if (KHO.khoaQT) {
+        await khoGoiTho({
+          fn: "luunhansu", khoa: KHO.khoaQT, uid: sua ? u.id : undefined, ten,
+          vai: goi.role, team: goi.team || "", active: goi.active,
+          mk: !sua && iMK.value.trim() ? iMK.value.trim() : undefined
+        });
+        kq.innerHTML += '<div class="warnbar ok">☁ Đã lưu cả lên kho chung — mọi máy đăng nhập được.</div>';
+      } else {
+        kq.innerHTML += '<div class="warnbar wn">Chưa nhập khoá quản trị nên chỉ lưu ở máy này. '
+          + "Vào <b>Nhân sự &amp; tài khoản</b> nhập khoá rồi bấm Lưu lại để đẩy lên kho.</div>";
+      }
+    } catch (e) {
+      kq.innerHTML += '<div class="warnbar wn">⚠ Chưa đẩy được lên kho: ' + esc(e.message)
+        + "<br>Tài khoản vẫn dùng được trên máy này và qua <b>Mật khẩu chung</b>. "
+        + "Triển khai lại Apps Script phiên bản mới rồi bấm Lưu lại.</div>";
+    }
+    render();
+  };
+  ft.appendChild(bLuu);
+  const bT = el("button", "btn", "Đóng"); bT.onclick = pbDong;
+  ft.appendChild(el("div", "grow")); ft.appendChild(bT);
+  box.appendChild(ft);
+}
+/* nút "+ Thêm nhân viên" trong Nhân sự & tài khoản dùng phiếu mới, không hỏi từng câu nữa */
+(function () {
+  if (typeof moNhanSu !== "function") return;
+  const goc = moNhanSu;
+  moNhanSu = function () {
+    const r = goc.apply(this, arguments);
+    try {
+      const b = [...document.querySelectorAll("#cotwrap button")]
+        .find(x => /Thêm nhân viên/.test(x.textContent));
+      if (b) { b.textContent = "+ Thêm mới người dùng"; b.onclick = () => moThemNguoiDung(); }
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* ============================================================================
+   MỤC 6 — SỬA THÔNG TIN ĐẶT LỊCH
+   ========================================================================= */
+const suaLichDuoc = () => ["admin", "hr", "ql", "ketoan", "sales", "cskh", "qlcskh"].indexOf(myRole()) >= 0;
+const xemLSLich = () => ["admin", "hr", "ketoan", "ql"].indexOf(myRole()) >= 0;
+
+function moSuaDatLich(id) {
+  const T = TESTS.find(x => x.id === id);
+  if (!T) return;
+  const k = khOf(T.khId) || {};
+  const box = pbMo("Sửa thông tin đặt lịch",
+    (k.hoTenHV || "") + " · đang đặt " + fmtD(T.date) + " " + (T.gio || ""), "🗓");
+  if (!box) return;
+  const st = { ts: T.testerId, ngay: T.date, gio: T.gio };
+
+  const hien = el("div", "khm-kv");
+  hien.innerHTML = '<div class="kl">Đang đặt</div><div><b>' + esc(fmtD(T.date)) + " · " + esc(T.gio || "")
+    + "</b> · tester <b>" + esc(userOf(T.testerId).name || "—") + "</b> "
+    + esc(userOf(T.testerId).gv || "") + "</div>"
+    + '<div class="kl">Học viên</div><div><b>' + esc(k.hoTenHV || "—") + "</b>"
+    + (k.phone ? " · " + esc(k.phone) : "") + "</div>";
+  box.appendChild(hien);
+
+  const sTS = pbO(box, "Tester", pbSelect(TESTERS.filter(u => u.active).map(u => [u.id, u.name + " " + (u.gv || "")]), st.ts));
+  const iNg = el("input"); iNg.type = "date"; iNg.style.width = "100%"; iNg.value = st.ngay || "";
+  pbO(box, "Ngày test", iNg);
+  const sGio = el("select"); sGio.style.width = "100%";
+  pbO(box, "Giờ test", sGio);
+  const bao = el("div", "warnbar"); box.appendChild(bao);
+  const goiY = el("div", "khm-tt"); box.appendChild(goiY);
+  const iLy = pbInput("", "VD: phụ huynh xin đổi sang thứ 7");
+  pbO(box, "Lý do đổi (nên ghi để kế toán và quản lý nắm)", iLy);
+
+  const bLuu = el("button", "btn pri", "Lưu lịch mới");
+
+  const veGio = () => {
+    st.ts = sTS.value; st.ngay = iNg.value;
+    const dow = st.ngay ? new Date(st.ngay).getDay() : -1;
+    const lich = st.ngay ? (lichCua(st.ts, dow) || []) : [];
+    const trong = st.ngay ? caTrongCua(st.ts, st.ngay) : [];
+    sGio.innerHTML = "";
+    if (!lich.length) {
+      sGio.appendChild(new Option("— tester không nhận ca " + (dow >= 0 ? THU_TEN[dow] : "") + " —", ""));
+    } else {
+      lich.forEach(g => {
+        const ranh = trong.indexOf(g) >= 0 || (g === T.gio && st.ts === T.testerId && st.ngay === T.date);
+        sGio.appendChild(new Option(g + (ranh ? "" : "  (đã có ca khác)"), g));
+      });
+    }
+    if (lich.indexOf(st.gio) >= 0) sGio.value = st.gio; else { st.gio = sGio.value || ""; }
+    kiem();
+  };
+  const kiem = () => {
+    st.gio = sGio.value;
+    const giu = st.ts === T.testerId && st.ngay === T.date && st.gio === T.gio;
+    const r = giu ? { ok: 1, msg: "Chưa đổi gì so với lịch đang có." } : kiemTraCa(st.ts, st.ngay, st.gio);
+    bao.className = "warnbar " + (giu ? "" : r.ok ? "ok" : "dg");
+    bao.innerHTML = giu ? "Chưa đổi gì so với lịch đang có."
+      : r.ok ? "✔ <b>Ca này còn trống</b> — " + esc(userOf(st.ts).name || "") + " nhận được ca "
+        + esc(st.gio) + " ngày " + esc(fmtD(st.ngay)) + "."
+        : "⛔ <b>Ca này KHÔNG trống</b> — " + esc(r.msg)
+        + "<br>Xem lại lịch Tester rồi chọn ca khác, hoặc đổi sang tester khác.";
+    const trong = st.ngay ? caTrongCua(st.ts, st.ngay) : [];
+    goiY.innerHTML = "<b>Ca còn trống của " + esc(userOf(st.ts).name || "") + " ngày "
+      + esc(st.ngay ? fmtD(st.ngay) : "—") + ":</b> "
+      + (trong.length ? "<b>" + trong.join(" · ") + "</b>" : "<b>không còn ca nào</b> — chọn ngày khác");
+    bLuu.disabled = giu || !r.ok;
+    bLuu.style.opacity = bLuu.disabled ? ".5" : "1";
+    bLuu.style.cursor = bLuu.disabled ? "not-allowed" : "pointer";
+  };
+  sTS.onchange = veGio; iNg.onchange = veGio; sGio.onchange = kiem;
+  veGio();
+
+  bLuu.onclick = () => {
+    if (bLuu.disabled) return;
+    const r = kiemTraCa(st.ts, st.ngay, st.gio);
+    if (!r.ok) { veGio(); return; }
+    const cu = { ts: T.testerId, ngay: T.date, gio: T.gio };
+    T.lichLS = T.lichLS || [];
+    T.lichLS.push({
+      tsCu: cu.ts, ngayCu: cu.ngay, gioCu: cu.gio,
+      tsMoi: st.ts, ngayMoi: st.ngay, gioMoi: st.gio,
+      by: S.me, t: iso(TODAY), luc: new Date().toTimeString().slice(0, 5), ly: iLy.value.trim()
+    });
+    if (st.ts !== cu.ts) {
+      T.tsCu = T.tsCu || [];
+      T.tsCu.push({ id: cu.ts, doiLuc: iso(TODAY), gio: new Date().toTimeString().slice(0, 5), by: S.me });
+    }
+    T.testerId = st.ts; T.date = st.ngay; T.gio = st.gio;
+    T.suaLuc = iso(TODAY); T.suaBy = S.me;
+    const kk = khOf(T.khId);
+    if (kk) {
+      kk.acts = kk.acts || [];
+      kk.acts.push({
+        t: iso(TODAY), type: "test", by: S.me,
+        text: "Sửa thông tin đặt lịch: " + fmtD(cu.ngay) + " " + (cu.gio || "") + " · "
+          + (userOf(cu.ts).name || "") + "  →  " + fmtD(st.ngay) + " " + st.gio + " · " + (userOf(st.ts).name || "")
+          + (iLy.value.trim() ? "\nLý do: " + iLy.value.trim() : "")
+      });
+      kk.next = { date: T.date, type: "test", note: "Nhắc khách đi test đúng giờ (lịch đã đổi)" };
+    }
+    persist(); pbDong();
+    toast("Đã đổi lịch — tester mới đã thấy ca này, người cũ không còn thấy nữa");
+    render();
+  };
+
+  /* lịch sử đổi — chỉ Ban điều hành · Kế toán · Quản lý xem */
+  if (xemLSLich() && (T.lichLS || []).length) {
+    const ls = el("div", "note-box");
+    ls.innerHTML = "<b>Lịch sử đổi lịch</b><br>" + T.lichLS.slice().reverse().map(x =>
+      fmtD(x.t) + " " + (x.luc || "") + " · " + esc(userOf(x.by).name || "") + ": "
+      + fmtD(x.ngayCu) + " " + (x.gioCu || "") + " " + esc(userOf(x.tsCu).name || "")
+      + " → " + fmtD(x.ngayMoi) + " " + (x.gioMoi || "") + " " + esc(userOf(x.tsMoi).name || "")
+      + (x.ly ? " — " + esc(x.ly) : "")).join("<br>");
+    box.appendChild(ls);
+  } else if ((T.lichLS || []).length) {
+    box.appendChild(el("div", "sub", "Ca này đã được đổi lịch " + T.lichLS.length
+      + " lần — bạn chỉ thấy bản mới nhất."));
+  }
+
+  const ft = el("div", "row"); ft.style.cssText = "gap:8px;margin-top:6px";
+  ft.appendChild(bLuu);
+  const bT = el("button", "btn", "Đóng"); bT.onclick = pbDong;
+  ft.appendChild(el("div", "grow")); ft.appendChild(bT);
+  box.appendChild(ft);
+}
+/* nút Sửa lịch hiện ngay trong phiếu khách hàng, và bỏ nút Sales xác nhận (mục 11) */
+(function () {
+  if (typeof veCaTrongPhieuKH !== "function") return;
+  veCaTrongPhieuKH = function (k) {
+    const ds = caCuaKhach(k);
+    if (!ds.length) return null;
+    const box = el("div", "card"); box.style.cssText = "box-shadow:none;border:1px solid var(--border)";
+    box.appendChild(el("div", "card-h", "<h3>🎥 Ca test của khách này</h3>"));
+    const b = el("div", "card-b");
+    ds.slice(0, 5).forEach(T => {
+      const r = el("div"); r.style.cssText = "padding:8px 0;border-top:1px solid var(--border)";
+      const tt = T.status === "done" ? '<span class="chip ok">đã test</span>'
+        : T.status === "booked" ? '<span class="chip">chưa test</span>'
+          : T.status === "absent" ? '<span class="chip dg">không đến</span>' : '<span class="chip dg">huỷ</span>';
+      r.innerHTML = "<div><b>" + esc(fmtD(T.date)) + " · " + esc(T.gio || "") + "</b> "
+        + '<span class="sub">tester ' + esc(userOf(T.testerId).name || "") + " · "
+        + ((T.phutHoc || T.hrPhut) ? (T.phutHoc || T.hrPhut) + " phút" : "chưa nhập phút") + "</span> " + tt
+        + ((T.lichLS || []).length ? ' <span class="chip wn">đã đổi lịch ' + T.lichLS.length + " lần</span>" : "")
+        + "</div>"
+        + (T.video ? '<div class="sub" style="margin-top:4px">🎥 <a href="' + esc(T.video)
+          + '" target="_blank" rel="noopener">mở video ca test</a></div>' : "");
+      if (suaLichDuoc() && T.status !== "done" && T.status !== "cancel" && T.status !== "huy") {
+        const bs = el("button", "btn sm pri", "✎ Sửa thông tin đặt lịch");
+        bs.style.marginTop = "6px";
+        bs.onclick = e => { e.stopPropagation(); moSuaDatLich(T.id); };
+        r.appendChild(bs);
+      }
+      b.appendChild(r);
+    });
+    box.appendChild(b);
+    return box;
+  };
+})();
+/* bảng "Đổi tester cho ca đã đặt" đổi thành "Sửa lịch ca đã đặt" — đổi được cả ngày và giờ */
+(function () {
+  if (typeof veDoiTester !== "function") return;
+  const goc = veDoiTester;
+  veDoiTester = function (v) {
+    const r = goc.apply(this, arguments);
+    try {
+      if (!suaLichDuoc()) return r;
+      const cards = [...v.querySelectorAll(".card")];
+      const c = cards.find(x => /Đổi tester cho ca đã đặt/.test(x.innerText));
+      if (!c) return r;
+      const h = c.querySelector("h3"); if (h) h.textContent = "Sửa lịch ca đã đặt";
+      const s = c.querySelector(".card-h .sub");
+      if (s) s.textContent = "đổi tester, ngày hoặc giờ — web kiểm tra ca mới có trống hay không trước khi lưu";
+      const t = c.querySelector("table"); if (!t) return r;
+      const hr = t.querySelector("thead tr");
+      if (hr && !hr._them) { hr._them = 1; hr.appendChild(el("th", null, "Sửa lịch")); }
+      const hom = iso(TODAY), het = iso(dAdd(TODAY, 21));
+      const ds = TESTS.filter(T => T && T.date >= hom && T.date <= het
+        && T.status !== "cancel" && T.status !== "huy")
+        .sort((a, b) => (a.date + a.gio).localeCompare(b.date + b.gio)).slice(0, 60);
+      [...t.querySelectorAll("tbody tr")].forEach((tr, i) => {
+        const T = ds[i]; if (!T || tr._them) return;
+        tr._them = 1;
+        const td = el("td");
+        const b = el("button", "btn sm pri", "✎ Sửa lịch");
+        b.onclick = () => moSuaDatLich(T.id);
+        td.appendChild(b);
+        if ((T.lichLS || []).length) td.appendChild(el("div", "sub-cell", "đã đổi " + T.lichLS.length + " lần"));
+        tr.appendChild(td);
+      });
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* ============================================================================
+   MỤC 9 — NÚT "CÓ ACE CÙNG HỌC"
+   ========================================================================= */
+const laAce = k => !!(k && k.laAce);
+function aceCon(k) {
+  return ((k && k.ace) || []).map(id => khOf(id)).filter(Boolean);
+}
+/* tạo / bỏ hồ sơ của anh chị em */
+function aceDat(k, n) {
+  if (!k) return;
+  k.ace = k.ace || [];
+  n = Math.max(0, Math.min(2, +n || 0));
+  while (k.ace.length > n) {
+    const id = k.ace.pop();
+    const i = KH.findIndex(x => x.id === id);
+    if (i >= 0) {
+      const con = KH[i];
+      const coCa = TESTS.some(T => T.khId === id);
+      const coDon = (con.orders || []).length;
+      if (coCa || coDon) { k.ace.push(id); toast("Bạn " + (con.hoTenHV || "") + " đã có ca test hoặc đơn hàng — không bỏ được."); break; }
+      KH.splice(i, 1);
+    }
+  }
+  while (k.ace.length < n) {
+    const so = k.ace.length + 1;
+    const id = k.id + "-A" + so;
+    if (!khOf(id)) {
+      const con = Object.assign({}, JSON.parse(JSON.stringify(k)), {
+        id, laAce: 1, aceCua: k.id, ace: [], aceSo: 0,
+        hoTenHV: "", lop: "", tests: [], orders: [], acts: [], noteForm: {},
+        level: "L5", firstL5: k.firstL5 || iso(TODAY), next: null, remkt: null, kho: 0
+      });
+      con.acts = [{ t: iso(TODAY), type: "sys", by: S.me, text: "Tạo hồ sơ anh/chị/em cùng học của " + (k.hoTenHV || k.id) }];
+      KH.push(con);
+    }
+    k.ace.push(id);
+  }
+  k.aceSo = k.ace.length;
+  persist();
+}
+/* Anh chị em KHÔNG bị tính thành một data mới (chỉ một số điện thoại về một lần),
+   nhưng vẫn hiện bình thường ở mọi màn: danh sách khách, lịch test, ca của tester,
+   công tester, hợp đồng. Cách làm giống hệt số Seeding: chỉ rút khỏi BỘ ĐẾM báo cáo. */
+let _bqAce = 0;
+(function () {
+  const goc = scope;
+  scope = function () {
+    const r = goc.apply(this, arguments) || [];
+    return _bqAce > 0 ? r.filter(k => !laAce(k)) : r;
+  };
+})();
+(function () {
+  ["bcGom", "chiSo", "soDataKy"].forEach(ten => {
+    if (typeof window[ten] !== "function") return;
+    const goc = window[ten];
+    window[ten] = function () {
+      _bqAce++;
+      try { return goc.apply(this, arguments); } finally { _bqAce--; }
+    };
+  });
+})();
+(function () {
+  if (typeof chiSo !== "function") return;
+  const goc = chiSo;
+  chiSo = function (list, from, to) {
+    return goc.call(this, (list || []).filter(k => !laAce(k)), from, to);
+  };
+})();
+
+/* khối chọn "Có ace cùng học" + mẫu L5 của từng bạn */
+function aceKhoi(k, id) {
+  const box = el("div", "note-blk");
+  const h = el("div", "nb-h");
+  h.innerHTML = "<span>👨‍👩‍👧‍👦 Có anh/chị/em cùng học không?</span>"
+    + (k.ace && k.ace.length ? '<span class="chip ok">' + k.ace.length + " bạn cùng học</span>"
+      : '<span class="chip">chưa có</span>');
+  box.appendChild(h);
+  const r = el("div", "row"); r.style.cssText = "gap:8px;padding:8px 0;flex-wrap:wrap";
+  [[0, "Không có"], [1, "Có 1 bạn"], [2, "Có 2 bạn"]].forEach(([n, ten]) => {
+    const dang = (k.ace || []).length === n;
+    const b = el("button", "btn sm" + (dang ? " pri" : ""), ten);
+    b.onclick = () => {
+      if ((k.ace || []).length === n) return;
+      if (n < (k.ace || []).length && !confirm("Bỏ hồ sơ bạn cùng học?\n\nCác thông tin đã điền của bạn đó sẽ mất.")) return;
+      aceDat(k, n); render(); moKHM(id);
+    };
+    r.appendChild(b);
+  });
+  box.appendChild(r);
+  box.appendChild(el("div", "nb-hint", "Chọn có 1 hoặc 2 bạn thì web mở thêm <b>mẫu L5 riêng cho từng bạn</b> "
+    + "và <b>ô đặt lịch ca test riêng</b> cho bạn đó — mỗi bạn một ca test, một kết quả, một hợp đồng."));
+  return box;
+}
+function aceKhoiCon(con, cha, id) {
+  const box = el("div", "note-blk");
+  const h = el("div", "nb-h");
+  const T = TESTS.filter(x => x.khId === con.id && x.status !== "huy" && x.status !== "cancel")
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""))[0];
+  h.innerHTML = "<span>🧑‍🎓 Bạn cùng học: <b>" + esc(con.hoTenHV || "chưa điền tên") + "</b></span>"
+    + (T ? '<span class="chip ok">đã có ca test ' + esc(fmtD(T.date)) + "</span>"
+      : '<span class="chip dg">chưa đặt lịch test</span>');
+  box.appendChild(h);
+
+  const r1 = el("div", "nb-f");
+  r1.appendChild(el("div", "nb-l", "<span>Họ tên bạn cùng học</span>"));
+  const iTen = pbInput(con.hoTenHV || "", "VD: Nguyễn Minh Khôi");
+  iTen.onchange = () => { con.hoTenHV = iTen.value.trim(); persist(); render(); moKHM(id); };
+  r1.appendChild(iTen); box.appendChild(r1);
+
+  const r2 = el("div", "nb-f");
+  r2.appendChild(el("div", "nb-l", "<span>Lớp · Cấp học</span>"));
+  const h2 = el("div", "row"); h2.style.gap = "8px";
+  const sLop = pbSelect([["", "— Lớp —"]].concat(LOPS.map(x => [x, x])), con.lop || "");
+  sLop.onchange = () => { con.lop = sLop.value; persist(); };
+  const sCap = pbSelect(CAPHOC.map(c => [c.id, c.name]), con.cap || "cxd");
+  sCap.onchange = () => { con.cap = sCap.value; persist(); };
+  h2.appendChild(sLop); h2.appendChild(sCap);
+  r2.appendChild(h2); box.appendChild(r2);
+
+  /* mẫu L5 riêng của bạn này */
+  if (typeof khoiMauNote === "function") {
+    const w = el("div"); w.style.cssText = "border-top:1px dashed var(--border);margin-top:8px;padding-top:8px";
+    w.appendChild(el("div", "sub", "Mẫu L5 của bạn <b>" + esc(con.hoTenHV || "này") + "</b>"));
+    try { w.appendChild(khoiMauNote(con, con.id)); } catch (e) { }
+    box.appendChild(w);
+  }
+
+  /* đặt lịch ca test cho bạn này */
+  const ft = el("div", "row"); ft.style.cssText = "gap:8px;padding-top:8px;flex-wrap:wrap";
+  if (!con.hoTenHV) {
+    ft.appendChild(el("div", "sub", "Điền họ tên bạn ấy trước rồi mới đặt được lịch test."));
+  } else if (T) {
+    ft.appendChild(el("div", "sub", "Ca test: <b>" + fmtD(T.date) + " · " + esc(T.gio || "")
+      + "</b> · tester " + esc(userOf(T.testerId).name || "")));
+    if (suaLichDuoc() && T.status !== "done") {
+      const bs = el("button", "btn sm", "✎ Sửa lịch bạn này");
+      bs.onclick = () => moSuaDatLich(T.id);
+      ft.appendChild(bs);
+    }
+  } else {
+    const bd = el("button", "btn sm pri", "🗓 Đặt lịch test cho bạn này");
+    bd.onclick = () => { if (typeof formDatLich === "function") formDatLich(con); };
+    ft.appendChild(bd);
+  }
+  const bm = el("button", "btn sm", "Mở phiếu riêng của bạn này");
+  bm.onclick = () => { dongKHM(true); moKHM(con.id); };
+  ft.appendChild(el("div", "grow")); ft.appendChild(bm);
+  box.appendChild(ft);
+  return box;
+}
+(function () {
+  if (typeof khoiMauNote !== "function") return;
+  const goc = khoiMauNote;
+  khoiMauNote = function (k, id) {
+    const goc1 = goc.apply(this, arguments);
+    try {
+      if (!k || laAce(k)) return goc1;
+      if (typeof tplLevel !== "function" || tplLevel(k) !== "L5") return goc1;
+      const fr = document.createDocumentFragment();
+      fr.appendChild(aceKhoi(k, id));
+      fr.appendChild(goc1);
+      aceCon(k).forEach(con => fr.appendChild(aceKhoiCon(con, k, id)));
+      return fr;
+    } catch (e) { return goc1; }
+  };
+})();
+
+/* ============================================================================
+   MỤC 2 — SOÁT TỈNH & LỚP CỦA KHÁCH ĐÃ NHẬP
+   ========================================================================= */
+const TINH_TRONG = ["", null, undefined, "—", "Chưa xác định", "chưa xác định", "Chưa rõ", "khác", "Khác"];
+const stThieuTinh = k => !k.tinh || TINH_TRONG.indexOf(String(k.tinh).trim()) >= 0;
+const stThieuLop = k => {
+  const c = String(k.cap || "");
+  if (c === "sv") return false;                       /* sinh viên / đi làm thì không cần lớp */
+  return !String(k.lop || "").trim();
+};
+const stThieuCap = k => !k.cap || k.cap === "cxd";
+function stDS() {
+  let ds = KH.slice().filter(k => k && !laAce(k) && !(typeof laSeeding === "function" && laSeeding(k)));
+  const r = myRole();
+  if (r === "sales" || r === "cskh") ds = ds.filter(k => k.owner === S.me);
+  else if (r === "ql" || r === "qlcskh") {
+    const toi = me() || {};
+    ds = ds.filter(k => (userOf(k.owner) || {}).team === toi.team);
+  }
+  return ds;
+}
+/* đoán tỉnh từ nội dung quảng cáo / ghi chú của khách */
+function stChuKhach(k) {
+  let s = [k.note, k.mucTieu, k.adChu, k.noteGiao].filter(Boolean).join(" ");
+  try { (k.acts || []).slice(-6).forEach(a => { s += " " + (a.text || ""); }); } catch (e) { }
+  try {
+    (INBOX || []).forEach(x => {
+      if (x && x.phone && typeof sdtGon === "function" && sdtGon(x.phone) === sdtGon(k.phone))
+        s += " " + (x.raw || "") + " " + (x.adChu || "") + " " + (x.note || "");
+    });
+  } catch (e) { }
+  return s;
+}
+function stDoanTinh(k) {
+  try {
+    if (typeof adTinhCo === "function") {
+      const x = (INBOX || []).find(y => y && y.phone && sdtGon(y.phone) === sdtGon(k.phone) && y.adId);
+      const t = x ? adTinhCo(x) : "";
+      if (t) return t;
+    }
+  } catch (e) { }
+  try { return doanTinh(stChuKhach(k)) || ""; } catch (e) { return ""; }
+}
+Object.assign(TITLES, { soattinh: "Soát tỉnh & lớp" });
+function viewSoatTinhLop(v) {
+  const ds = stDS();
+  const loc = S.stLoc || "thieu";
+  const bDoan = el("button", "btn", "✨ Đoán tỉnh từ nội dung quảng cáo");
+  bDoan.onclick = () => {
+    const can = ds.filter(stThieuTinh);
+    let n = 0;
+    can.forEach(k => { const t = stDoanTinh(k); if (t) { k.tinh = t; k.tinhDoan = 1; n++; } });
+    persist();
+    toast(n ? "Đã điền tỉnh cho " + n + " khách — soát lại rồi sửa tay chỗ nào sai" : "Không đoán được tỉnh nào từ dữ liệu hiện có");
+    render();
+  };
+  pageHead(v, "🔎", "Soát tỉnh & lớp của khách đã nhập", [bDoan]);
+
+  const tTinh = ds.filter(stThieuTinh).length;
+  const tLop = ds.filter(stThieuLop).length;
+  const tCap = ds.filter(stThieuCap).length;
+  const du = ds.filter(k => !stThieuTinh(k) && !stThieuLop(k)).length;
+
+  const w = el("div", "warnbar " + (tTinh || tLop ? "wn" : "ok"));
+  w.innerHTML = tTinh || tLop
+    ? "<span>🔎</span><span>Trong <b>" + ds.length + " khách</b> đang có: <b>" + tTinh
+    + "</b> khách <b>chưa có tỉnh</b>, <b>" + tLop + "</b> khách <b>chưa có lớp</b>. "
+    + "Sửa thẳng trong bảng dưới — sửa xong là lưu ngay, không cần bấm gì thêm.</span>"
+    : "<span>✅</span><span>Cả <b>" + ds.length + " khách</b> đều đã có tỉnh và lớp. Tệp chị nhập lên ghi đủ.</span>";
+  v.appendChild(w);
+
+  /* các ô đếm */
+  const g = el("div", "tiles");
+  const tile = (lab, val, mau) => {
+    const d = el("div", "tile");
+    d.innerHTML = '<div class="lab">' + esc(lab) + '</div><div class="val"'
+      + (mau ? ' style="color:' + mau + '"' : "") + ">" + val + "</div>";
+    g.appendChild(d);
+  };
+  tile("Tổng khách đang soát", ds.length);
+  tile("Chưa có tỉnh", tTinh, tTinh ? "var(--critical)" : "");
+  tile("Chưa có lớp", tLop, tLop ? "var(--critical)" : "");
+  tile("Chưa rõ cấp học", tCap, tCap ? "var(--warning)" : "");
+  tile("Đã đủ tỉnh & lớp", du, "var(--good-ink)");
+  v.appendChild(g);
+
+  /* bảng theo tỉnh */
+  const dem = {};
+  ds.forEach(k => { const t = stThieuTinh(k) ? "(chưa có tỉnh)" : String(k.tinh).trim(); dem[t] = (dem[t] || 0) + 1; });
+  const cT = el("div", "card"); cT.style.marginTop = "10px";
+  cT.appendChild(el("div", "card-h", "<h3>Khách theo Tỉnh — kiểm tra tệp nhập có ghi đúng chưa</h3>"));
+  const bT = el("div", "card-b");
+  bT.innerHTML = Object.keys(dem).sort((a, b) => dem[b] - dem[a])
+    .map(t => '<span class="chip' + (t === "(chưa có tỉnh)" ? " dg" : "") + '" style="margin:3px">'
+      + esc(t) + " · <b>" + dem[t] + "</b></span>").join("");
+  cT.appendChild(bT); v.appendChild(cT);
+
+  /* bảng sửa */
+  const tabs = el("div", "tabs");
+  [["thieu", "Cần sửa (" + ds.filter(k => stThieuTinh(k) || stThieuLop(k)).length + ")"],
+  ["tinh", "Thiếu tỉnh (" + tTinh + ")"], ["lop", "Thiếu lớp (" + tLop + ")"],
+  ["doan", "Tỉnh do web đoán (" + ds.filter(k => k.tinhDoan).length + ")"],
+  ["het", "Tất cả (" + ds.length + ")"]].forEach(([k, n]) => {
+    const b = el("button", loc === k ? "on" : "", n);
+    b.onclick = () => { S.stLoc = k; render(); };
+    tabs.appendChild(b);
+  });
+  v.appendChild(tabs);
+
+  let list = ds;
+  if (loc === "thieu") list = ds.filter(k => stThieuTinh(k) || stThieuLop(k));
+  else if (loc === "tinh") list = ds.filter(stThieuTinh);
+  else if (loc === "lop") list = ds.filter(stThieuLop);
+  else if (loc === "doan") list = ds.filter(k => k.tinhDoan);
+  list = list.slice().sort((a, b) => String(a.hoTenHV || "").localeCompare(String(b.hoTenHV || ""), "vi"));
+
+  const c = el("div", "card"); c.style.marginTop = "10px";
+  c.appendChild(el("div", "card-h", "<h3>Sửa nhanh tỉnh &amp; lớp</h3><span class=\"sub\">"
+    + list.length + " khách · sửa ô nào là lưu ngay ô đó</span>"));
+  const cb = el("div", "card-b");
+  const wrap = el("div", "tbl-wrap"); wrap.style.maxHeight = "58vh";
+  const t = el("table");
+  t.innerHTML = '<thead><tr><th class="r">#</th><th>Học viên</th><th>SĐT</th><th>Phụ trách</th>'
+    + "<th>Tỉnh</th><th>Lớp</th><th>Cấp học</th><th>Web đoán</th></tr></thead>";
+  const tb = el("tbody");
+  list.slice(0, 250).forEach((k, i) => {
+    const tr = el("tr");
+    tr.appendChild(el("td", "tnum r muted", String(i + 1)));
+    tr.appendChild(el("td", null, "<b>" + esc(k.hoTenHV || "—") + "</b>"
+      + (k.hoTenPH ? '<div class="sub-cell">PH ' + esc(k.hoTenPH) + "</div>" : "")));
+    tr.appendChild(el("td", "tnum", esc(k.phone || "—")));
+    tr.appendChild(el("td", "sub-cell", esc(userOf(k.owner).name || "—")));
+
+    const tdT = el("td");
+    const oT = typeof oDiaDiem === "function" ? oDiaDiem(k.tinh || "", val => {
+      k.tinh = val; delete k.tinhDoan; persist();
+    }) : pbInput(k.tinh || "");
+    oT.style.minWidth = "140px";
+    if (stThieuTinh(k)) oT.style.borderColor = "var(--critical)";
+    tdT.appendChild(oT); tr.appendChild(tdT);
+
+    const tdL = el("td");
+    const sL = pbSelect([["", "— chưa có —"]].concat(LOPS.map(x => [x, x])), k.lop || "");
+    sL.style.minWidth = "110px";
+    if (stThieuLop(k)) sL.style.borderColor = "var(--critical)";
+    sL.onchange = () => { k.lop = sL.value; persist(); render(); };
+    tdL.appendChild(sL); tr.appendChild(tdL);
+
+    const tdC = el("td");
+    const sC = pbSelect(CAPHOC.map(c2 => [c2.id, c2.name]), k.cap || "cxd");
+    sC.style.minWidth = "120px";
+    sC.onchange = () => { k.cap = sC.value; persist(); render(); };
+    tdC.appendChild(sC); tr.appendChild(tdC);
+
+    const tdD = el("td");
+    if (stThieuTinh(k)) {
+      const g2 = stDoanTinh(k);
+      if (g2) {
+        const b = el("button", "btn sm", "→ " + g2);
+        b.title = "Web đọc được tỉnh này trong nội dung quảng cáo / ghi chú";
+        b.onclick = () => { k.tinh = g2; k.tinhDoan = 1; persist(); render(); };
+        tdD.appendChild(b);
+      } else tdD.appendChild(el("span", "sub", "không đoán được"));
+    } else if (k.tinhDoan) {
+      tdD.innerHTML = '<span class="chip wn">web đoán</span>';
+      const b = el("button", "btn sm", "✔ đúng rồi");
+      b.style.marginLeft = "5px";
+      b.onclick = () => { delete k.tinhDoan; persist(); render(); };
+      tdD.appendChild(b);
+    } else tdD.innerHTML = '<span class="chip ok">đã soát</span>';
+    tr.appendChild(tdD);
+    tb.appendChild(tr);
+  });
+  if (!list.length) tb.appendChild(el("tr", "", '<td colspan="8"><div class="empty">Không có khách nào trong mục này.</div></td>'));
+  t.appendChild(tb); wrap.appendChild(t); cb.appendChild(wrap);
+  if (list.length > 250) cb.appendChild(el("div", "sub", "Bảng hiện 250 dòng đầu — sửa xong lọc lại sẽ ra tiếp."));
+  c.appendChild(cb); v.appendChild(c);
+}
+VIEWS.soattinh = () => viewSoatTinhLop;
+(function () {
+  try {
+    if (!PERM_KEYS.some(p => p.k === "soattinh"))
+      PERM_KEYS.push({ k: "soattinh", n: "Soát tỉnh & lớp (sửa tỉnh, lớp, cấp học của khách đã nhập)" });
+    ["admin", "mkt", "hr", "ql", "sales", "cskh", "qlcskh", "ketoan"].forEach(r => {
+      if (PERM_MAC_DINH[r] && PERM_MAC_DINH[r] !== "*" && PERM_MAC_DINH[r].indexOf("soattinh") < 0)
+        PERM_MAC_DINH[r] += ",soattinh";
+    });
+    let nhom = NAVDEF.find(g => g.items.some(i => i.id === "kh")) || NAVDEF[0];
+    if (nhom && !nhom.items.some(i => i.id === "soattinh"))
+      nhom.items.push({
+        id: "soattinh", ico: "🔎", name: "Soát tỉnh & lớp", roles: "*",
+        badge: () => { try { return stDS().filter(k => stThieuTinh(k) || stThieuLop(k)).length; } catch (e) { return 0; } },
+        warn: 1
+      });
+  } catch (e) { }
+})();
+
+/* áp phòng ban vào TEAMS ngay khi nạp xong */
+try { pbApDung(); } catch (e) { }
+
+/* ---------- Ca sắp tới cho tester (ca đã đặt cho ngày mai trở đi) ---------- */
+(function () {
+  if (typeof viewCaCuaToi !== "function") return;
+  const goc = viewCaCuaToi;
+  viewCaCuaToi = function (v) {
+    const r = goc.apply(this, arguments);
+    try {
+      const all = myRole() === "tester"
+        ? (typeof caCuaToi === "function" ? caCuaToi() : TESTS.filter(t => t.testerId === S.me))
+        : TESTS.slice();
+      const sap = all.filter(T => T && T.date > iso(TODAY) && !T.filledAt
+        && T.status !== "cancel" && T.status !== "huy")
+        .sort((a, b) => (a.date + (a.gio || "")).localeCompare(b.date + (b.gio || "")));
+      const c = el("div", "card"); c.style.marginTop = "10px";
+      c.appendChild(el("div", "card-h", "<h3>🗓 Ca sắp tới</h3><span class=\"sub\">"
+        + "ca đã đặt cho những ngày tới — lịch đổi là bảng này đổi theo ngay</span>"));
+      const wrap = el("div", "tbl-wrap"); const t = el("table");
+      t.innerHTML = '<thead><tr><th>Ngày · Giờ</th><th>Học viên</th><th>Lớp</th>'
+        + "<th>Chương trình</th><th>Người tư vấn</th><th>Ghi chú</th></tr></thead>";
+      const tb = el("tbody");
+      sap.slice(0, 40).forEach(T => {
+        const k = khOf(T.khId) || {};
+        const tr = el("tr");
+        tr.innerHTML = "<td><b>" + esc(fmtD(T.date)) + '</b><div class="sub-cell">' + esc(T.gio || "") + "</div></td>"
+          + '<td class="name-cell">' + esc(k.hoTenHV || "—") + '<div class="sub-cell">' + esc(k.tinh || "") + "</div></td>"
+          + "<td>" + esc(k.lop || "—") + "</td>"
+          + "<td>" + esc((typeof progOf === "function" ? progOf(T.prog).name : T.prog) || "—") + "</td>"
+          + '<td class="sub-cell">' + esc(userOf(T.saleId || k.owner).name || "—") + "</td>"
+          + '<td class="sub-cell">' + ((T.lichLS || []).length ? '<span class="chip wn">đã đổi lịch</span>' : "")
+          + (laAce(k) ? ' <span class="chip">anh/chị/em cùng học</span>' : "") + "</td>";
+        tb.appendChild(tr);
+      });
+      if (!sap.length) tb.appendChild(el("tr", "", '<td colspan="6"><div class="empty">Chưa có ca nào sắp tới.</div></td>'));
+      t.appendChild(tb); wrap.appendChild(t); c.appendChild(wrap);
+      v.insertBefore(c, v.children[1] || null);
     } catch (e) { }
     return r;
   };
