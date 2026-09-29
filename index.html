@@ -490,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v83.0 · 28/09/2026";
+window.ALES_BAN = "v86.0 · 29/09/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -31626,13 +31626,18 @@ async function mailGuiMot(O, im) {
     tieude: mailChuDe(O), html: mailThan(O), files
   });
   if (!j || j.loi) throw new Error((j && j.loi) || "kho chưa nhận lệnh gửi mail");
-  O.mailHD = { xong: 1, luc: iso(TODAY), gio: new Date().toTimeString().slice(0, 5), den, by: S.me };
+  const tuThat = String(j.guiTu || MAIL_TU);
+  O.mailHD = {
+    xong: 1, luc: iso(TODAY), gio: new Date().toTimeString().slice(0, 5),
+    den, by: S.me, tu: tuThat
+  };
+  mailCH().tuThat = tuThat; mailCH().alias = j.alias || [];
   const kk = khOf(O.khId);
   if (kk) {
     kk.acts = kk.acts || [];
     kk.acts.push({
       t: iso(TODAY), type: "sys", by: S.me,
-      text: "Đã gửi email hợp đồng tới " + den + " (3 ảnh HD01 · HD02 · HD03)."
+      text: "Đã gửi email hợp đồng tới " + den + " (3 ảnh HD01 · HD02 · HD03), gửi từ " + tuThat + "."
     });
   }
   persist();
@@ -31650,9 +31655,44 @@ function viewMailHD(v) {
   const w = el("div", "warnbar info");
   w.innerHTML = "<span>✉</span><span>Khách chọn <b>nhận hợp đồng online</b>, kế toán <b>đã duyệt đơn</b> "
     + "thì đơn vào đây. Đúng <b>10h sáng Thứ 6</b>, máy nào đang mở web bằng tài khoản Kế toán "
-    + "hoặc Ban điều hành sẽ <b>tự gửi</b> — gửi từ <b>" + esc(MAIL_TU) + "</b>, "
-    + "kèm 3 ảnh <b>HD01 · HD02 · HD03</b>. Chị bấm <b>Gửi tất cả</b> thì gửi ngay, không phải chờ.</span>";
+    + "hoặc Ban điều hành sẽ <b>tự gửi</b>, kèm 3 ảnh <b>HD01 · HD02 · HD03</b>. "
+    + "Chị bấm <b>Gửi tất cả</b> thì gửi ngay, không phải chờ.</span>";
   v.appendChild(w);
+
+  const CH = mailCH();
+  /* Chỉ lần GỬI THẬT mới nói được chắc. Danh sách alias của Google hay bỏ sót. */
+  const daGui = !!CH.tuThat;
+  const dungDC = daGui && CH.tuThat === MAIL_TU;
+  const wTu = el("div", "warnbar" + (daGui && !dungDC ? "" : " info"));
+  wTu.innerHTML = "<span>📮</span><span>"
+    + (daGui
+      ? "Lần gửi gần nhất đi từ <b>" + esc(CH.tuThat) + "</b>"
+      + (dungDC ? " — đúng địa chỉ mong muốn."
+        : ". Google không cho gửi dưới tên " + esc(MAIL_TU) + " nên web lùi về hòm thư "
+        + "đang chạy Apps Script. Thư vẫn gửi bình thường, ô <b>Trả lời</b> vẫn về "
+        + esc(MAIL_TU) + ".")
+      : "Web luôn <b>thử gửi dưới tên " + esc(MAIL_TU) + "</b> trước; Google từ chối thì mới "
+      + "lùi về hòm thư đang chạy Apps Script"
+      + (CH.homThu ? " (<b>" + esc(CH.homThu) + "</b>)" : "")
+      + ". Gửi thử một thư là biết chắc — danh sách alias Google báo về hay thiếu, "
+      + "đừng căn cứ vào đó.")
+    + "</span>";
+  v.appendChild(wTu);
+  const bSoi = el("button", "btn sm", "🔍 Kiểm tra hòm thư gửi");
+  bSoi.style.margin = "0 0 8px 2px";
+  bSoi.onclick = async () => {
+    bSoi.disabled = true; bSoi.textContent = "Đang hỏi kho…";
+    try {
+      const j = await khoPOST({ fn: "mailai", khoa: KHO.khoaQT || "" });
+      CH.homThu = String(j.homThu || ""); CH.alias = j.alias || [];
+      persist(); render();
+      toast("Hòm thư đang chạy Apps Script: " + CH.homThu);
+    } catch (e) {
+      bSoi.disabled = false; bSoi.textContent = "🔍 Kiểm tra hòm thư gửi";
+      mailBaoLoi(null, e);
+    }
+  };
+  v.appendChild(bSoi);
 
   const c = el("div", "card");
   c.appendChild(el("div", "card-h", "<h3>" + cho.length + " đơn đang chờ gửi</h3>"
@@ -31772,33 +31812,37 @@ function moHuongDanMail() {
   box.appendChild(el("div", "sub",
     "Lần đầu Google sẽ hỏi quyền gửi mail: trong Apps Script chọn hàm aleThuQuyen rồi bấm ▶ Chạy, "
     + "bấm Xem xét quyền → chọn tài khoản → Nâng cao → Chuyển đến… → Cho phép. "
-    + "Muốn thư hiện đúng tên gửi anhnguales@gmail.com thì địa chỉ này phải được khai là "
-    + "alias trong Gmail (Cài đặt → Tài khoản → Gửi thư bằng địa chỉ khác). "
+    + "Muốn biết thư sẽ đi từ địa chỉ nào: chọn hàm aleXemHomThu rồi bấm ▶ Chạy, "
+    + "xem phần Nhật ký thực thi. "
     + "Xong hết thì quay lại đây bấm Gửi lại."));
 }
 const MAIL_APPS_SCRIPT = [
-  "/* ====== ALES · gửi email hợp đồng ======",
-  "   Làm ĐÚNG 3 việc, một lần duy nhất:",
-  "   B1. Trong tệp Apps Script, tìm dòng  function doPost(e) {",
-  "       Đổi đúng chữ doPost đó thành  doPostCu   →  function doPostCu(e) {",
-  "       (chỉ đổi 1 chỗ này, phần bên trong giữ nguyên)",
-  "   B2. Dán TOÀN BỘ đoạn dưới vào cuối tệp.",
-  "   B3. Lưu → Triển khai → ✏️ → Phiên bản: Phiên bản mới → Triển khai.",
-  "   ====================================== */",
+  "/* ================================================================",
+  "   ALES · GỬI EMAIL HỢP ĐỒNG  —  khối cuối tệp Apps Script  (bản 2)",
   "",
-  "/* Tu lay ma kho tu dong KHOA san co trong tep nay.",
-  "   Neu tep cua chi dat ten khac thi sua chu KHOA o duoi cho dung. */",
-  "var ALE_KHOA = (typeof KHOA !== 'undefined' && KHOA) ? KHOA : '';",
+  "   CÁCH THAY:",
+  "   1. Tìm dòng   function aleHomThu() {   ở gần cuối tệp.",
+  "      (nếu chưa có thì tìm   var ALE_KHOA = ...)",
+  "   2. Bôi đen TỪ DÒNG ĐÓ CHO TỚI HẾT TỆP → xoá đi.",
+  "   3. Dán toàn bộ khối này vào chỗ vừa xoá.",
+  "   4. 💾 Lưu → chạy hàm aleThuGuiAlias một lần → Triển khai → ✏️ →",
+  "      Phiên bản: Phiên bản mới → Triển khai.",
   "",
-  "function aleGuiMail(d) {",
-  "  var files = (d.files || []).map(function (f) {",
-  "    return Utilities.newBlob(Utilities.base64Decode(f.b64), 'image/png', f.ten);",
-  "  });",
-  "  var o = { name: d.tuTen || 'Anh ngu ALES', htmlBody: d.html, attachments: files };",
-  "  if (d.bcc) o.bcc = d.bcc;",
-  "  if (d.tu) o.from = d.tu;      /* phai la alias da khai trong Gmail */",
-  "  GmailApp.sendEmail(d.den, d.tieude, '', o);",
-  "  return { ok: 1 };",
+  "   Hàm doPostCu(e) lớn ở phía trên (bắt đầu bằng var body = {})",
+  "   GIỮ NGUYÊN. Cả tệp chỉ được có ĐÚNG MỘT doPostCu và ĐÚNG MỘT doPost.",
+  "",
+  "   Bản 2 khác bản 1: không tin vào danh sách alias của Google nữa.",
+  "   Cứ gửi thẳng dưới tên anhnguales@gmail.com; Google từ chối thì mới",
+  "   lùi về hòm thư gốc. Vì GmailApp.getAliases() hay bỏ sót alias là",
+  "   địa chỉ Gmail khác, dù Gmail vẫn cho gửi bình thường.",
+  "   ================================================================ */",
+  "",
+  "function aleHomThu() {",
+  "  try { return Session.getEffectiveUser().getEmail(); } catch (er) { return \"\"; }",
+  "}",
+  "",
+  "function aleAlias() {",
+  "  try { return GmailApp.getAliases() || []; } catch (er) { return []; }",
   "}",
   "",
   "function aleTraLoi(x) {",
@@ -31806,21 +31850,69 @@ const MAIL_APPS_SCRIPT = [
   "    .setMimeType(ContentService.MimeType.JSON);",
   "}",
   "",
+  "/* Loi kieu \"khong duoc phep dat nguoi gui\" thi lui ve hom thu goc;",
+  "   moi loi khac phai bao that, khong duoc nuot. */",
+  "function aleLoiTuFrom(er) {",
+  "  return /from|alias|invalid|not allowed|permission|sender/i.test(String(er));",
+  "}",
+  "",
+  "function aleGuiMail(d) {",
+  "  var files = (d.files || []).map(function (f) {",
+  "    return Utilities.newBlob(Utilities.base64Decode(f.b64), \"image/png\", f.ten);",
+  "  });",
+  "  var o = { name: d.tuTen || \"Anh ngu ALES\", htmlBody: d.html, attachments: files };",
+  "  if (d.bcc) o.bcc = d.bcc;",
+  "  if (d.tu) o.replyTo = d.tu;          /* khach bam Tra loi luon ve dia chi nay */",
+  "",
+  "  if (d.tu) {",
+  "    o.from = d.tu;",
+  "    try {",
+  "      GmailApp.sendEmail(d.den, d.tieude, \"\", o);",
+  "      return { ok: 1, guiTu: d.tu, alias: aleAlias() };",
+  "    } catch (er) {",
+  "      if (!aleLoiTuFrom(er)) throw er;",
+  "      delete o.from;                   /* Google khong cho: gui bang hom goc */",
+  "    }",
+  "  }",
+  "  GmailApp.sendEmail(d.den, d.tieude, \"\", o);",
+  "  return { ok: 1, guiTu: aleHomThu(), alias: aleAlias() };",
+  "}",
+  "",
+  "/* ---- CHAY MOT LAN de biet chac gui duoc duoi ten anhnguales hay khong ----",
+  "   Thu ve chinh hom thu dang chay script. Mo thu do ra xem dong Nguoi gui. */",
+  "function aleThuGuiAlias() {",
+  "  var toi = aleHomThu();",
+  "  var muon = \"anhnguales@gmail.com\";",
+  "  try {",
+  "    GmailApp.sendEmail(toi, \"ALES - thu gui duoi ten \" + muon,",
+  "      \"\", { name: \"Anh ngu ALES\", from: muon, replyTo: muon, htmlBody: \"Thu thu.\" });",
+  "    Logger.log(\"THANH CONG: gui duoc duoi ten \" + muon);",
+  "    Logger.log(\"Mo hop thu \" + toi + \" xem dong Nguoi gui de xac nhan.\");",
+  "  } catch (er) {",
+  "    Logger.log(\"KHONG gui duoc duoi ten \" + muon + \" — Google bao: \" + er);",
+  "    Logger.log(\"Thu se di tu \" + toi + \", o Tra loi van ve \" + muon + \".\");",
+  "  }",
+  "  Logger.log(\"Danh sach alias Google liet ke: \"",
+  "    + (aleAlias().length ? aleAlias().join(\", \") : \"(trong — khong sao, cu xem ket qua o tren)\"));",
+  "}",
+  "",
+  "/* Bam Chay ham nay MOT LAN de Google hoi quyen gui mail */",
+  "function aleThuQuyen() {",
+  "  GmailApp.sendEmail(aleHomThu(), \"ALES - thu quyen gui mail\",",
+  "    \"Neu nhan duoc thu nay la da bat xong.\");",
+  "}",
+  "",
+  "/* ---- Cua ngo duy nhat cua kho. Chi bat hai lenh moi, con lai tra ve ham cu ---- */",
   "function doPost(e) {",
   "  var g = null;",
   "  try { g = JSON.parse(e.postData.contents); } catch (err) { g = null; }",
-  "  if (g && g.fn === 'guimail') {",
-  "    if (!ALE_KHOA || g.khoa !== ALE_KHOA) return aleTraLoi({ loi: 'Sai ma kho' });",
+  "  if (g && (g.fn === \"guimail\" || g.fn === \"mailai\")) {",
+  "    if (!aiGoi(g)) return aleTraLoi({ loi: \"Chua dang nhap hoac phien da het han\" });",
+  "    if (g.fn === \"mailai\") return aleTraLoi({ ok: 1, homThu: aleHomThu(), alias: aleAlias() });",
   "    try { return aleTraLoi(aleGuiMail(g)); }",
-  "    catch (err) { return aleTraLoi({ loi: 'Google bao: ' + err }); }",
+  "    catch (err) { return aleTraLoi({ loi: \"Google bao: \" + err }); }",
   "  }",
-  "  return doPostCu(e);          /* moi lenh cu van chay nhu truoc */",
-  "}",
-  "",
-  "/* Bam Chay ham nay mot lan de Google hoi quyen gui mail */",
-  "function aleThuQuyen() {",
-  "  GmailApp.sendEmail(Session.getActiveUser().getEmail(),",
-  "    'ALES - thu quyen gui mail', 'Neu nhan duoc thu nay la da bat xong.');",
+  "  return doPostCu(e);          /* moi lenh cu chay y nhu truoc */",
   "}"
 ].join("\n");
 
@@ -31878,6 +31970,535 @@ async function mailTuChay() {
     try {
       if (S.view === "ads" && typeof pcDangXemChoChia === "function" && pcDangXemChoChia())
         setTimeout(() => { try { pcDocThemChat(6); } catch (e) { } }, 1200);
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* ===== đổi đường dẫn kho thì mọi máy tự nhận, khỏi khai tay từng máy =====
+   Mỗi lần đổi KHO_URL_MAC_DINH trong tệp thì tăng số dưới lên 1. */
+const KHO_URL_VER = 1;
+(function () {
+  try {
+    if (typeof KHO_URL_MAC_DINH !== "string" || !KHO_URL_MAC_DINH) return;
+    if (KHO.urlVer === KHO_URL_VER) return;
+    KHO.url = KHO_URL_MAC_DINH;
+    KHO.urlVer = KHO_URL_VER;
+    khoLuu(KHO);
+  } catch (e) { }
+})();
+/* ============ v84 — dấu tròn & chữ ký giám đốc trên ảnh HĐ, cột Đã gửi HĐ ============
+   1. Mục Con dấu có thêm 2 ô: Dấu tròn công ty và Chữ ký giám đốc, kèm ô căn vị trí.
+   2. Ảnh hợp đồng gửi khách: trang cuối có dấu tròn + chữ ký ở khối ĐẠI DIỆN BÊN A,
+      ngoài dấu giáp lai ở cả 3 trang như cũ.
+   3. Đơn hàng có cột "Đã gửi HĐ" — tự tích khi email gửi xong, kèm ngày và địa chỉ.
+   4. Cột Email vào bộ cột của mục Làm hợp đồng.
+   5. CSKH và QL CSKH xem được mục Đơn hàng (Sales vốn đã xem được).
+   ================================================================================= */
+
+/* ---------- 1. hai ô dấu mới ---------- */
+(function () {
+  const them = [["tron", "Dấu tròn công ty — ảnh HĐ gửi khách"],
+  ["ky", "Chữ ký giám đốc — ảnh HĐ gửi khách"]];
+  them.forEach(x => { if (!DAU_O.some(([k]) => k === x[0])) DAU_O.push(x); });
+})();
+
+/* vị trí tính bằng cm, đo từ mép trái và mép trên trang A4 */
+const KY_MAU = { kyX: 5.4, kyY: 15.0, kyCao: 2.2, tronX: 5.1, tronY: 14.5, tronCao: 3.4 };
+function kySo(k) {
+  const v = (DB.DAU || {})[k];
+  return (v === undefined || v === null || v === "") ? KY_MAU[k] : (+v || 0);
+}
+function kyDat(k, v) { DB.DAU = DB.DAU || {}; DB.DAU[k] = +v || 0; persist(); }
+
+/* ---------- 2. vẽ dấu tròn + chữ ký lên trang cuối của ảnh hợp đồng ---------- */
+(function () {
+  if (typeof hdAnhTrang !== "function") return;
+  const goc = hdAnhTrang;
+  hdAnhTrang = async function (O, stk, ty) {
+    const ra = await goc.apply(this, arguments);
+    try {
+      if (!ra || !ra.length) return ra;
+      const [aKy, aTron] = await Promise.all([hdNapAnh(dauLay("ky")), hdNapAnh(dauLay("tron"))]);
+      if (!aKy && !aTron) return ra;
+      const i = ra.length - 1;
+      const nen = await hdNapAnh(ra[i]);
+      if (!nen) return ra;
+      const c = document.createElement("canvas");
+      c.width = nen.width; c.height = nen.height;
+      const x = c.getContext("2d");
+      x.drawImage(nen, 0, 0);
+      const ty2 = nen.width / (21 * CM);        /* ảnh đang ở tỉ lệ nào */
+      x.scale(ty2, ty2);
+      const ve = (im, X, Y, H, mo) => {
+        if (!im) return;
+        const h = H * CM, w = h * (im.width / Math.max(1, im.height));
+        x.globalAlpha = mo;
+        x.drawImage(im, X * CM, Y * CM, w, h);
+        x.globalAlpha = 1;
+      };
+      ve(aKy, kySo("kyX"), kySo("kyY"), kySo("kyCao"), 1);
+      ve(aTron, kySo("tronX"), kySo("tronY"), kySo("tronCao"), 0.9);
+      ra[i] = c.toDataURL("image/png");
+    } catch (e) { }
+    return ra;
+  };
+})();
+
+/* ---------- 3. màn Con dấu: ô căn vị trí dấu tròn và chữ ký ---------- */
+(function () {
+  if (typeof viewDauCT !== "function") return;
+  const goc = viewDauCT;
+  viewDauCT = function (v) {
+    const r = goc.apply(this, arguments);
+    try {
+      if (myRole() !== "admin") return r;
+      const c = el("div", "card"); c.style.marginTop = "10px";
+      c.appendChild(el("div", "card-h", "<h3>Vị trí dấu tròn &amp; chữ ký trên ảnh hợp đồng</h3>"
+        + '<span class="sub">đo từ mép trái và mép trên trang A4, đơn vị cm · '
+        + "chỉ áp cho <b>ảnh HĐ gửi khách</b>, bản in Word không đổi</span>"));
+      const b = el("div", "card-b");
+      const hang = (ten, ds) => {
+        const h = el("div", "row");
+        h.style.cssText = "gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px";
+        h.appendChild(el("span", "sub", ten));
+        ds.forEach(([k, nhan]) => {
+          h.appendChild(el("span", "sub", nhan));
+          const o = el("input"); o.type = "number"; o.step = "0.1"; o.style.width = "80px";
+          o.value = kySo(k);
+          o.onchange = () => { kyDat(k, o.value); toast("Đã lưu"); };
+          h.appendChild(o);
+        });
+        b.appendChild(h);
+      };
+      hang("Chữ ký giám đốc —", [["kyX", "cách mép trái"], ["kyY", "cách mép trên"], ["kyCao", "cao"]]);
+      hang("Dấu tròn công ty —", [["tronX", "cách mép trái"], ["tronY", "cách mép trên"], ["tronCao", "cao"]]);
+      const bv = el("button", "btn sm", "↺ Về mặc định");
+      bv.onclick = () => { Object.keys(KY_MAU).forEach(k => kyDat(k, KY_MAU[k])); render(); };
+      b.appendChild(bv);
+      b.appendChild(el("div", "sub", "Cách xem nhanh: mở một đơn ở mục Đơn hàng → "
+        + "📷 Ảnh Hợp đồng → xem trang 3. Lệch thì sửa số ở đây rồi mở lại."));
+      c.appendChild(b); v.appendChild(c);
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* ---------- 4. cột "Đã gửi HĐ" trong Đơn hàng ---------- */
+(function () {
+  if (typeof DCOLS === "undefined" || DCMAP.daGuiHD) return;
+  const c = {
+    g: "Hợp đồng", k: "daGuiHD", n: "Đã gửi HĐ",
+    r: o => {
+      const m = o && o.mailHD;
+      if (!m || !m.xong) return '<span class="muted">—</span>';
+      return '<div class="nw"><b>✔ đã gửi</b></div>'
+        + '<div class="sub-cell">' + esc(fmtD(m.luc) + (m.gio ? " " + m.gio : "")) + "</div>"
+        + '<div class="sub-cell">' + esc(m.den || "") + "</div>";
+    }
+  };
+  DCOLS.push(c); DCMAP.daGuiHD = c;
+  const cv = CVIEC.find(x => x.id === "hopdong");
+  if (cv) {
+    if (cv.cot.indexOf("email") < 0) cv.cot.push("email");
+    if (cv.cot.indexOf("daGuiHD") < 0) cv.cot.push("daGuiHD");
+  }
+  ["daGuiHD"].forEach(k => {
+    if (typeof DCOT_MAC_DINH !== "undefined" && DCOT_MAC_DINH.indexOf(k) < 0) DCOT_MAC_DINH.push(k);
+    if (typeof COTS_DON !== "undefined" && COTS_DON.indexOf(k) < 0) COTS_DON.push(k);
+  });
+  try { persist(); } catch (e) { }
+})();
+
+/* ---------- 5. Sales và CSKH xem được mục Đơn hàng ---------- */
+(function () {
+  try {
+    ["cskh", "qlcskh"].forEach(r => {
+      const q = PERM_MAC_DINH[r];
+      if (q && q !== "*" && q.split(",").indexOf("donhang") < 0) PERM_MAC_DINH[r] = q + ",donhang";
+    });
+    /* menu của Sales trước đây bị bó lại chỉ còn Khách hàng và Dữ liệu MKT */
+    if (typeof NAV_CHI_HIEN !== "undefined" && NAV_CHI_HIEN.sales
+      && NAV_CHI_HIEN.sales.indexOf("donhang") < 0) NAV_CHI_HIEN.sales.push("donhang");
+  } catch (e) { }
+})();
+/* CSKH có quyền Đơn hàng thì luật "mục này mở từ trong Đơn hàng" lại giấu mất
+   chính màn CSKH của họ — trả lại cho hai vai đó. */
+(function () {
+  if (typeof navFor !== "function") return;
+  const goc = navFor;
+  navFor = function () {
+    const gs = goc.apply(this, arguments) || [];
+    try {
+      const r = myRole();
+      if (r !== "cskh" && r !== "qlcskh") return gs;
+      if (gs.some(g => g.items.some(i => i.id === "cskh"))) return gs;
+      let muc = null;
+      NAVDEF.forEach(g => g.items.forEach(i => { if (i.id === "cskh") muc = i; }));
+      if (!muc) return gs;
+      const ra = gs.map(g => Object.assign({}, g, { items: g.items.slice() }));
+      const nhom = ra.find(g => g.items.some(i => i.id === "donhang")) || ra[ra.length - 1];
+      if (nhom) nhom.items.unshift(muc); else ra.push({ g: "CSKH", items: [muc] });
+      return ra;
+    } catch (e) { return gs; }
+  };
+})();
+
+/* ---------- 6. nhắc nạp dấu tròn / chữ ký ở màn Email hợp đồng ---------- */
+(function () {
+  if (typeof viewMailHD !== "function") return;
+  const goc = viewMailHD;
+  viewMailHD = function (v) {
+    const r = goc.apply(this, arguments);
+    try {
+      if (!dauLay("tron") || !dauLay("ky")) {
+        const w = el("div", "warnbar");
+        w.innerHTML = "<span>🔖</span><span>Chưa nạp <b>"
+          + [!dauLay("tron") ? "dấu tròn công ty" : "", !dauLay("ky") ? "chữ ký giám đốc" : ""]
+            .filter(Boolean).join(" và ")
+          + "</b> — ảnh hợp đồng gửi khách sẽ thiếu phần này ở trang cuối. "
+          + "Nạp tại <b>Dữ liệu tài khoản → Con dấu</b>.</span>";
+        v.insertBefore(w, v.children[1] || null);
+      }
+    } catch (e) { }
+    return r;
+  };
+})();
+/* ============ v85 — Đối soát: đọc thẳng file sao kê Excel của ngân hàng ============
+   1. Thả được cả .xlsx (Excel) chứ không chỉ .csv — tự bung file, không cần thư viện ngoài.
+   2. Dòng tiêu đề nằm ở đâu cũng tìm ra: sao kê ngân hàng hay có 5–10 dòng đầu
+      là tên chủ tài khoản, số tài khoản, kỳ sao kê… rồi mới tới bảng.
+   3. Hiểu bảng có hai cột Ghi nợ / Ghi có — chỉ lấy tiền VÀO, bỏ tiền ra.
+   4. Hiểu ngày kiểu số của Excel (45900) chứ không chỉ 29/09/2026.
+   5. Báo lỗi nói rõ đang thiếu cột nào, thay vì chỉ "không nhận ra".
+   ================================================================================ */
+
+/* ---------- 1. bung file .xlsx bằng chính trình duyệt ---------- */
+async function skBung(u8) {
+  /* .xlsx là một file nén ZIP. Đọc mục lục ở cuối file rồi bung từng phần cần dùng. */
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= 0 && i > u8.length - 66000; i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error("Tệp này không phải .xlsx (không thấy mục lục ZIP)");
+  const soMuc = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+  const ra = {};
+  const doc = new TextDecoder("utf-8");
+  for (let n = 0; n < soMuc; n++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const nen = dv.getUint16(p + 10, true);
+    const coNen = dv.getUint32(p + 20, true);
+    const daiTen = dv.getUint16(p + 28, true);
+    const daiPhu = dv.getUint16(p + 30, true);
+    const daiCT = dv.getUint16(p + 32, true);
+    const viTri = dv.getUint32(p + 42, true);
+    const ten = doc.decode(u8.subarray(p + 46, p + 46 + daiTen));
+    p += 46 + daiTen + daiPhu + daiCT;
+    if (!/^xl\/(sharedStrings\.xml|worksheets\/sheet\d+\.xml|workbook\.xml)$/.test(ten)) continue;
+    const lh = viTri;
+    if (dv.getUint32(lh, true) !== 0x04034b50) continue;
+    const dau = lh + 30 + dv.getUint16(lh + 26, true) + dv.getUint16(lh + 28, true);
+    const tho = u8.subarray(dau, dau + coNen);
+    ra[ten] = nen === 0 ? tho : await skXa(tho);
+  }
+  return ra;
+}
+function skXa(tho) {
+  if (typeof DecompressionStream !== "function")
+    return Promise.reject(new Error("Trình duyệt này chưa mở được .xlsx — dùng Chrome bản mới, hoặc xuất sao kê dạng CSV"));
+  const bl = new Blob([tho]);
+  return new Response(bl.stream().pipeThrough(new DecompressionStream("deflate-raw")))
+    .arrayBuffer().then(b => new Uint8Array(b));
+}
+function skCotSo(r) {                       /* "BC12" → 54 */
+  const m = String(r || "").match(/^([A-Z]+)/);
+  if (!m) return -1;
+  let n = 0;
+  for (let i = 0; i < m[1].length; i++) n = n * 26 + (m[1].charCodeAt(i) - 64);
+  return n - 1;
+}
+async function skDocXLSX(buf) {
+  const tep = await skBung(new Uint8Array(buf));
+  const doc = new TextDecoder("utf-8");
+  const dp = new DOMParser();
+  let chuoi = [];
+  if (tep["xl/sharedStrings.xml"]) {
+    const x = dp.parseFromString(doc.decode(tep["xl/sharedStrings.xml"]), "application/xml");
+    chuoi = [].map.call(x.getElementsByTagName("si"), si =>
+      [].map.call(si.getElementsByTagName("t"), t => t.textContent).join(""));
+  }
+  const ten = Object.keys(tep).filter(t => /worksheets\/sheet\d+\.xml$/.test(t)).sort()[0];
+  if (!ten) throw new Error("Tệp .xlsx không có trang tính nào");
+  const sh = dp.parseFromString(doc.decode(tep[ten]), "application/xml");
+  const bang = [];
+  [].forEach.call(sh.getElementsByTagName("row"), r => {
+    const hang = [];
+    [].forEach.call(r.getElementsByTagName("c"), c => {
+      const i = skCotSo(c.getAttribute("r"));
+      const kieu = c.getAttribute("t") || "";
+      let v = "";
+      if (kieu === "inlineStr") {
+        const is = c.getElementsByTagName("t");
+        v = is.length ? [].map.call(is, t => t.textContent).join("") : "";
+      } else {
+        const vn = c.getElementsByTagName("v")[0];
+        const s = vn ? vn.textContent : "";
+        v = (kieu === "s") ? (chuoi[+s] || "") : s;
+      }
+      if (i >= 0) hang[i] = v; else hang.push(v);
+    });
+    for (let i = 0; i < hang.length; i++) if (hang[i] === undefined) hang[i] = "";
+    bang.push(hang);
+  });
+  return bang;
+}
+
+/* ---------- 2. đọc bảng đã tách cột, dù tiêu đề nằm ở dòng thứ mấy ---------- */
+const SK_NGAY = ["NGAY", "DATE", "THOIGIAN", "TIME"];
+const SK_ND = ["NOIDUNG", "MOTA", "DESCRIPTION", "REMARK", "DIENGIAI", "CONTENT", "CHITIET"];
+const SK_CO = ["GHICO", "CREDIT", "PHATSINHCO", "TIENVAO", "SOTIENGHICO", "CO"];
+const SK_NO = ["GHINO", "DEBIT", "PHATSINHNO", "TIENRA", "SOTIENGHINO", "NO"];
+const SK_TIEN = ["SOTIEN", "AMOUNT", "GIATRI"];
+const SK_MA = ["MATHAMCHIEU", "THAMCHIEU", "SOGIAODICH", "MAGD", "REFERENCE", "REF",
+  "TRACE", "SOBUTTOAN", "FTTRANS", "TRANSACTIONID", "SOCHUNGTU", "SOTHAMCHIEU"];
+
+function skKhopCot(dau) {
+  const daLay = {};
+  /* cột nào nhận rồi thì cột sau không nhận lại — tránh "Ngày giao dịch" bị
+     hiểu nhầm thành cột Nội dung, hay "Số tham chiếu" nuốt mất cột Số tiền */
+  const tim = ds => {
+    let i = dau.findIndex(h => h && !daLay[dau.indexOf(h)] && ds.some(t => h === t));
+    if (i < 0) i = dau.findIndex((h, j) => h && !daLay[j] && ds.some(t => h.indexOf(t) >= 0));
+    if (i >= 0) daLay[i] = 1;
+    return i;
+  };
+  const cNgay = tim(SK_NGAY);
+  const cMa = tim(SK_MA);
+  const cNd = tim(SK_ND);
+  const cNo = tim(SK_NO);
+  const cCo = tim(SK_CO);
+  return { ngay: cNgay, nd: cNd, co: cCo, no: cNo, tien: cCo >= 0 ? cCo : tim(SK_TIEN), ma: cMa };
+}
+/* ngày của Excel là một con số: 1 = 01/01/1900 */
+function skNgay(v) {
+  const s = String(v == null ? "" : v).trim();
+  if (/^\d{5}(\.\d+)?$/.test(s)) {
+    const n = Math.floor(+s);
+    if (n > 20000 && n < 80000) {
+      const d = new Date(Date.UTC(1899, 11, 30) + n * 86400000);
+      return d.toISOString().slice(0, 10);
+    }
+  }
+  return ngayGD(s);
+}
+function skTuBang(bang) {
+  const sach = (bang || []).map(h => (h || []).map(x => String(x == null ? "" : x)));
+  let iDau = -1, cot = null;
+  for (let i = 0; i < Math.min(sach.length, 40); i++) {
+    const dau = sach[i].map(chuanNd);
+    const c = skKhopCot(dau);
+    if (c.nd >= 0 && c.tien >= 0) { iDau = i; cot = c; break; }
+  }
+  if (iDau < 0) {
+    const thay = sach.length ? sach[0].map(x => x.trim()).filter(Boolean).join(" · ") : "(tệp trống)";
+    throw new Error("Không tìm ra cột Nội dung và Số tiền. Dòng đầu tệp đang là: " + thay.slice(0, 160));
+  }
+  const ra = [];
+  for (let i = iDau + 1; i < sach.length; i++) {
+    const c = sach[i];
+    /* có cả cột Ghi nợ và Ghi có thì chỉ nhận dòng có tiền ở cột Ghi có */
+    if (cot.co >= 0 && cot.no >= 0 && !tienSo(c[cot.co])) continue;
+    let tien = tienSo(c[cot.tien]);
+    if (!tien) continue;
+    if (cot.co < 0 && /^\s*-/.test(String(c[cot.tien] || ""))) continue;   /* số âm = tiền ra */
+    ra.push({
+      ngay: cot.ngay >= 0 ? skNgay(c[cot.ngay]) : iso(TODAY),
+      nd: (c[cot.nd] || "").trim(),
+      tien,
+      ma: cot.ma >= 0 ? String(c[cot.ma] || "").trim() : ""
+    });
+  }
+  return ra;
+}
+/* docSaoKe cũ chỉ đọc được CSV có tiêu đề ở dòng 1 — nay đi qua bộ đọc mới */
+(function () {
+  if (typeof docSaoKe !== "function") return;
+  docSaoKe = function (text) {
+    const dong = String(text || "").split(/\r?\n/).filter(x => x.trim());
+    if (!dong.length) return [];
+    try { return skTuBang(dong.map(tachDongCSV)); } catch (e) { return []; }
+  };
+})();
+/* bản có báo lỗi rõ, dùng cho nút thả file và ô dán */
+function skDocCoBao(text) { return skTuBang(String(text || "").split(/\r?\n/).filter(x => x.trim()).map(tachDongCSV)); }
+
+/* ---------- 3. nút thả file nhận thêm .xlsx ---------- */
+(function () {
+  if (typeof moDoiSoat !== "function") return;
+  const goc = moDoiSoat;
+  moDoiSoat = function () {
+    const r = goc.apply(this, arguments);
+    try {
+      const w = document.getElementById("cotwrap");
+      const inp = w && w.querySelector('input[type=file]');
+      const nut = w && [].slice.call(w.querySelectorAll("button"))
+        .find(b => /Thả file sao kê/.test(b.textContent));
+      if (!inp || !nut) return r;
+      inp.accept = ".csv,.txt,.xlsx";
+      nut.textContent = "⇧ Thả file sao kê (.xlsx · .csv)";
+      inp.onchange = async () => {
+        const f = inp.files[0]; if (!f) return;
+        const ten = f.name.toLowerCase();
+        try {
+          let ds;
+          if (/\.xlsx$/.test(ten)) {
+            ds = skTuBang(await skDocXLSX(await f.arrayBuffer()));
+          } else if (/\.xls$/.test(ten)) {
+            throw new Error("Tệp .xls là bản Excel đời cũ. Mở bằng Excel rồi "
+              + "Lưu dưới dạng .xlsx hoặc .csv, sau đó thả lại.");
+          } else {
+            ds = skDocCoBao(await f.text());
+          }
+          if (!ds.length) throw new Error("Đọc được bảng nhưng không có dòng nào là tiền VÀO.");
+          const k = napGD(ds, "file");
+          toast("Đã nạp " + k.moi + " giao dịch · khớp " + k.khop + " đơn · "
+            + k.bo + " chưa khớp · bỏ " + k.trung + " dòng trùng");
+          moDoiSoat(); render();
+        } catch (e) {
+          alert("Chưa đọc được tệp sao kê.\n\n" + (e.message || e)
+            + "\n\nCách chắc ăn: mở file bằng Excel, xoá các dòng tiêu đề phía trên bảng "
+            + "để dòng tên cột nằm trên cùng, rồi Lưu dưới dạng CSV và thả lại.");
+        }
+        inp.value = "";
+      };
+      /* ô dán: báo lỗi rõ hơn thay vì im lặng */
+      const bDan = w && [].slice.call(w.querySelectorAll("button"))
+        .find(b => /Nạp nội dung đã dán/.test(b.textContent));
+      const ta = w && w.querySelector("textarea");
+      if (bDan && ta) bDan.onclick = () => {
+        try {
+          const ds = skDocCoBao(ta.value);
+          if (!ds.length) throw new Error("Không có dòng nào là tiền VÀO.");
+          const k = napGD(ds, "dan");
+          toast("Đã nạp " + k.moi + " giao dịch · khớp " + k.khop + " đơn · " + k.bo + " chưa khớp");
+          moDoiSoat(); render();
+        } catch (e) { alert("Chưa đọc được phần đã dán.\n\n" + (e.message || e)); }
+      };
+    } catch (e) { }
+    return r;
+  };
+})();
+/* ============ v86 — để sao kê trên Google Sheet, web tự lấy về ============
+   Cách làm chị muốn: kế toán đổ sao kê vào một Google Sheet, web tự đọc,
+   không ai phải vào web thả file mỗi ngày.
+
+   1. Ô "Đường dẫn bảng giao dịch" nhận CẢ đường dẫn Google Sheet bình thường
+      (cái trên thanh địa chỉ), không bắt phải Xuất bản lên web nữa.
+      Web tự đổi sang đường lấy dữ liệu và thử lần lượt 3 kiểu cho tới khi được.
+   2. Nút "Thử đọc ngay" ngay cạnh ô đó — biết ngay đọc được mấy dòng,
+      hỏng thì báo đúng lý do, khỏi phải lưu rồi đợi.
+   3. Bảng lấy về đi qua bộ đọc của v85 nên vẫn bỏ được dòng tiền ra,
+      tiêu đề nằm dòng nào cũng tìm ra.
+   ========================================================================= */
+
+/* ---------- 1. đổi mọi kiểu đường dẫn Google Sheet sang đường lấy CSV ---------- */
+function ckDuongCSV(u) {
+  const s = String(u || "").trim();
+  if (!s) return [];
+  /* đã là bản Xuất bản lên web thì dùng thẳng */
+  if (/\/pub\?|\/pubhtml|output=csv/.test(s)) return [s];
+  const m = s.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]{20,})/);
+  if (!m) return [s];                       /* không phải Google Sheet — cứ thử nguyên văn */
+  const id = m[1];
+  const g = s.match(/[#&?]gid=(\d+)/);
+  const gid = g ? g[1] : "0";
+  /* gviz đọc được Sheet để chế độ "Bất kỳ ai có đường liên kết"; export cần quyền rộng hơn */
+  return [
+    "https://docs.google.com/spreadsheets/d/" + id + "/gviz/tq?tqx=out:csv&gid=" + gid,
+    "https://docs.google.com/spreadsheets/d/" + id + "/export?format=csv&gid=" + gid
+  ];
+}
+async function ckLayVan(u) {
+  const ds = ckDuongCSV(u);
+  if (!ds.length) throw new Error("Chưa dán đường dẫn nào");
+  let cuoi = "";
+  for (const d of ds) {
+    try {
+      const r = await fetch(d, { cache: "no-store" });
+      if (!r.ok) { cuoi = "kho trả về mã " + r.status; continue; }
+      const t = await r.text();
+      if (/^\s*<(!doctype|html)/i.test(t)) { cuoi = "Google trả về trang đăng nhập"; continue; }
+      if (t.trim()) return t;
+      cuoi = "bảng trống";
+    } catch (e) { cuoi = String(e.message || e); }
+  }
+  throw new Error(cuoi || "không đọc được");
+}
+
+/* ---------- 2. lấy giao dịch: dùng bộ đọc mới, báo lỗi rõ ---------- */
+(function () {
+  if (typeof layGDTuNguon !== "function") return;
+  layGDTuNguon = function (imLang) {
+    const u = (DB.CK.nguon || "").trim();
+    if (!u) { if (!imLang) toast("Chưa dán đường dẫn bảng giao dịch — vào ⚙ Tài khoản nhận tiền"); return; }
+    if (window._dangLayGD) return;
+    window._dangLayGD = 1;
+    ckLayVan(u).then(t => {
+      const ds = skTuBang(t.split(/\r?\n/).filter(x => x.trim()).map(tachDongCSV));
+      const k = napGD(ds, "sheet");
+      DB.CK.lanQuet = new Date().toISOString();
+      persist();
+      if (!imLang || k.moi) {
+        toast("Đã lấy " + k.moi + " giao dịch mới · khớp " + k.khop + " đơn · " + k.bo + " chưa khớp");
+        if (k.moi) render();
+      }
+    }).catch(e => {
+      if (!imLang) toast("Không đọc được bảng giao dịch: " + (e.message || e));
+    }).then(() => { window._dangLayGD = 0; });
+  };
+})();
+
+/* ---------- 3. ô đường dẫn: nhận link Sheet thường + nút Thử đọc ngay ---------- */
+(function () {
+  if (typeof moCaiDatCK !== "function") return;
+  const goc = moCaiDatCK;
+  moCaiDatCK = function () {
+    const r = goc.apply(this, arguments);
+    try {
+      const w = document.getElementById("cotwrap");
+      if (!w) return r;
+      const inp = [].slice.call(w.querySelectorAll("input[type=text]"))
+        .find(x => /đường dẫn|duong dan/i.test(x.placeholder || ""));
+      if (!inp) return r;
+      inp.placeholder = "Dán đường dẫn Google Sheet chứa sao kê";
+      const nhac = inp.parentNode && inp.parentNode.querySelector(".nb-hint");
+      if (nhac) nhac.innerHTML =
+        "Dán <b>đường dẫn Google Sheet</b> lấy ngay trên thanh địa chỉ — không cần Xuất bản lên web. "
+        + "Nhớ bật Chia sẻ của Sheet thành <b>“Bất kỳ ai có đường liên kết · Người xem”</b>, "
+        + "nếu không web không đọc được. Để trống thì kế toán vẫn thả file sao kê tay được.";
+      const hang = el("div", "row");
+      hang.style.cssText = "gap:8px;align-items:center;margin:-6px 0 12px;flex-wrap:wrap";
+      const bThu = el("button", "btn sm", "🔎 Thử đọc ngay");
+      const kq = el("span", "sub");
+      bThu.onclick = async () => {
+        const u = inp.value.trim();
+        if (!u) { kq.textContent = "Chưa dán đường dẫn nào."; return; }
+        bThu.disabled = true; kq.textContent = "Đang đọc…";
+        try {
+          const t = await ckLayVan(u);
+          const ds = skTuBang(t.split(/\r?\n/).filter(x => x.trim()).map(tachDongCSV));
+          kq.innerHTML = "✔ Đọc được <b>" + ds.length + "</b> giao dịch tiền vào"
+            + (ds.length ? " · mới nhất: " + esc(ds[ds.length - 1].nd || "").slice(0, 60) : "");
+        } catch (e) {
+          kq.innerHTML = "✖ " + esc(String(e.message || e))
+            + " — kiểm tra Sheet đã để <b>Bất kỳ ai có đường liên kết</b> chưa.";
+        }
+        bThu.disabled = false;
+      };
+      hang.appendChild(bThu); hang.appendChild(kq);
+      inp.parentNode.parentNode.insertBefore(hang, inp.parentNode.nextSibling);
     } catch (e) { }
     return r;
   };
