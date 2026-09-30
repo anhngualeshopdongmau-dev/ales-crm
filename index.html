@@ -490,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v97.0 · 30/09/2026";
+window.ALES_BAN = "v98.0 · 30/09/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -34257,10 +34257,12 @@ async function hdAnhTrangV93(O, stk, ty) {
         const hd = dauDoHop(aTron);
         const s = (caoTron * ty2) / Math.max(1, hd.cao);
         const W = aTron.width * s, H = aTron.height * s;
-        /* v97: căn giữa theo TOÀN BỘ phần mực của ảnh (gồm cả dòng chữ trong ảnh),
-           để dòng "(Ký, đóng dấu)" nằm cân đối dưới chữ ĐẠI DIỆN BÊN A */
+        /* v98: căn giữa theo ĐÚNG DÒNG CHỮ nằm sẵn trong ảnh dấu, để chữ
+           "(Ký, đóng dấu)" cân đối ngay dưới "ĐẠI DIỆN BÊN A"; ảnh nào không có
+           dòng chữ thì mới căn theo toàn bộ phần mực. */
         const ngang = (typeof kySo === "function" ? +kySo("kyNgang") : 0) * CM;
-        const tX = xKy + ngang - ((hd.mucX1 + hd.mucX2) / 2) * s;
+        const gX = hd.chu ? (hd.chu.x1 + hd.chu.x2) / 2 : (hd.mucX1 + hd.mucX2) / 2;
+        const tX = xKy + ngang - gX * s;
         const tY = tren - hd.mucY1 * s;
         if (aKy) {
           const hk = dauDoHop(aKy);
@@ -34684,7 +34686,7 @@ function dauDoHop(im) {
   const khoa = im && im.src ? im.src.length + "|" + im.src.slice(-90) : "x";
   if (DAU_HOP[khoa]) return DAU_HOP[khoa];
   const ra = { x1: 0, y1: 0, x2: im.width, y2: im.height, cao: im.height,
-    mucY1: 0, mucY2: im.height, mucX1: 0, mucX2: im.width };
+    mucY1: 0, mucY2: im.height, mucX1: 0, mucX2: im.width, chu: null };
   try {
     const W = Math.min(320, im.width) || 1;
     const H = Math.max(1, Math.round(im.height * W / im.width));
@@ -34715,6 +34717,27 @@ function dauDoHop(im) {
       ra.x1 = dx1 * ty; ra.x2 = (dx2 + 1) * ty;
       ra.y1 = dy1 * ty; ra.y2 = (dy2 + 1) * ty;
       ra.cao = Math.max(1, ra.y2 - ra.y1);
+      /* v98: dòng chữ nằm SẴN TRONG ảnh dấu — phần mực sẫm ở phía trên vòng đỏ.
+         Căn giữa theo chính dòng chữ này thì nó mới cân dưới ĐẠI DIỆN BÊN A. */
+      const yHet = Math.max(0, dy1 - 2);
+      let cx1 = 1e9, cx2 = -1, cy1 = 1e9, cy2 = -1, cn = 0;
+      for (let yy = 0; yy < yHet; yy++) for (let xx = 0; xx < W; xx++) {
+        const o = (yy * W + xx) * 4, r = d[o], g = d[o + 1], b = d[o + 2], a = d[o + 3];
+        if (a < 40) continue;
+        if (r > 210 && g > 210 && b > 210) continue;
+        if (r > 110 && r > g * 1.35 && r > b * 1.35) continue;   /* bỏ mực đỏ */
+        cn++;
+        if (xx < cx1) cx1 = xx;
+        if (xx > cx2) cx2 = xx;
+        if (yy < cy1) cy1 = yy;
+        if (yy > cy2) cy2 = yy;
+      }
+      if (cn > 30 && cx2 - cx1 > W * 0.08) {
+        ra.chu = {
+          x1: cx1 * ty, x2: (cx2 + 1) * ty,
+          y1: cy1 * ty, y2: (cy2 + 1) * ty
+        };
+      }
     }
     ra.mucY1 = (mY < 1e9 ? mY : 0) * ty;
     ra.mucY2 = (mY2 >= 0 ? mY2 + 1 : H) * ty;
@@ -35221,6 +35244,97 @@ function dkXemSoSua(k, O) {
           dkThanhLuu(bx, k, O, () => { render(); moKHM(id); });
         }, 0));
       });
+    } catch (e) { }
+    return r;
+  };
+})();
+/* ============ v98 — chữ trong dấu cân dưới "ĐẠI DIỆN BÊN A",
+                       và logo trong thư có nút kiểm tra ngay ============
+   1. Căn ảnh dấu theo ĐÚNG DÒNG CHỮ nằm trong ảnh (đã sửa ở v93/v96), nên
+      "(Ký, đóng dấu)" cân giữa ngay dưới "ĐẠI DIỆN BÊN A".
+   2. Logo trong thư: đổi địa chỉ mặc định sang GitHub raw (có ngay sau khi tải
+      tệp lên, không phải chờ GitHub Pages dựng lại), thêm nút KIỂM TRA để biết
+      chắc ảnh đã tải được hay chưa, và hai nút chọn nhanh địa chỉ.
+   ======================================================================== */
+
+const LOGO_RAW = "https://raw.githubusercontent.com/anhngualeshopdongmau-dev/ales-crm/main/logo-ales.png";
+const LOGO_PAGES = "https://anhngualeshopdongmau-dev.github.io/ales-crm/logo-ales.png";
+(function () {
+  try {
+    /* ai đang để địa chỉ GitHub Pages mà chưa tự đổi thì chuyển sang raw */
+    const CH = mailCH();
+    if (!CH.logoUrl || CH.logoUrl === LOGO_PAGES) CH.logoUrl = LOGO_RAW;
+  } catch (e) { }
+})();
+(function () {
+  if (typeof mailLogoURL !== "function") return;
+  const goc = mailLogoURL;
+  mailLogoURL = function () {
+    try {
+      const u = String((mailCH().logoUrl || "").trim());
+      return u || LOGO_RAW;
+    } catch (e) { return goc.apply(this, arguments); }
+  };
+})();
+
+/* thử tải ảnh logo thật để biết chắc đã lên GitHub chưa */
+function logoThu(u) {
+  return new Promise(ok => {
+    const im = new Image();
+    let xong = 0;
+    const t = setTimeout(() => { if (!xong) { xong = 1; ok({ ok: 0, ly: "quá lâu không tải được" }); } }, 8000);
+    im.onload = () => { if (xong) return; xong = 1; clearTimeout(t); ok({ ok: 1, w: im.width, h: im.height }); };
+    im.onerror = () => { if (xong) return; xong = 1; clearTimeout(t); ok({ ok: 0, ly: "không tải được ảnh ở địa chỉ này" }); };
+    /* chỉ chống bộ nhớ đệm cho địa chỉ http, không đụng vào ảnh nhúng */
+    im.src = /^https?:/i.test(u) ? u + (u.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now() : u;
+  });
+}
+(function () {
+  if (typeof viewDLTaiKhoan !== "function") return;
+  const goc = viewDLTaiKhoan;
+  viewDLTaiKhoan = function (v) {
+    const r = goc.apply(this, arguments);
+    try {
+      if ((S.dltkTab || "pq") !== "ns" || myRole() !== "admin") return r;
+      const the = [].slice.call(v.querySelectorAll(".card")).filter(c => {
+        const h = c.querySelector("h3");
+        return h && /Logo trong thư gửi khách/.test(h.textContent);
+      })[0];
+      if (!the || the._v98) return r;
+      the._v98 = 1;
+      const b = the.querySelector(".card-b");
+      if (!b) return r;
+
+      const hang = el("div", "row");
+      hang.style.cssText = "gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center";
+      const dat = (ten, u) => {
+        const n = el("button", "btn sm" + (mailLogoURL() === u ? " pri" : ""), ten);
+        n.onclick = e => { e.stopPropagation(); mailCH().logoUrl = u; persist(); render(); };
+        hang.appendChild(n);
+      };
+      dat("Dùng địa chỉ GitHub raw", LOGO_RAW);
+      dat("Dùng địa chỉ GitHub Pages", LOGO_PAGES);
+      const bk = el("button", "btn pri sm", "🔍 Kiểm tra ảnh logo");
+      const kq = el("span", "sub");
+      bk.onclick = async e => {
+        e.stopPropagation();
+        bk.disabled = true; kq.textContent = " đang thử tải…";
+        const t = await logoThu(mailLogoURL());
+        bk.disabled = false;
+        kq.innerHTML = t.ok
+          ? ' <span class="chip ok">✔ tải được ' + t.w + "×" + t.h + "</span>"
+          : ' <span class="chip dg">✖ ' + esc(t.ly) + "</span>";
+      };
+      hang.appendChild(bk); hang.appendChild(kq);
+      b.appendChild(hang);
+
+      b.appendChild(el("div", "warnbar wn",
+        "<span>📌</span><span><b>Cách tải tệp logo lên:</b> mở "
+        + "<b>github.com/anhngualeshopdongmau-dev/ales-crm</b> → "
+        + "<b>Add file</b> → <b>Upload files</b> → kéo tệp <b>logo-ales.png</b> vào → "
+        + "<b>Commit changes</b>. Tên tệp phải đúng <b>logo-ales.png</b>, chữ thường, "
+        + "và để <b>ngoài cùng</b> cạnh index.html chứ không nằm trong thư mục con.<br>"
+        + "Tải xong bấm <b>🔍 Kiểm tra ảnh logo</b> ở trên — hiện <b>✔ tải được</b> là thư sẽ có logo."));
     } catch (e) { }
     return r;
   };
