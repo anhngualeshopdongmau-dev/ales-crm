@@ -490,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v89.1 · 29/09/2026";
+window.ALES_BAN = "v91.0 · 29/09/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -33252,6 +33252,350 @@ function gdKhopLai() {
         .find(x => /Soi từng giao dịch/.test(x.textContent));
       if (neo && neo.parentNode) neo.parentNode.insertBefore(b, neo.nextSibling);
       else than.appendChild(b);
+    } catch (e) { }
+    return r;
+  };
+})();
+/* ============ v90 — một đợt nhận được NHIỀU lần chuyển ============
+   Chị hỏi rất đúng: "đợt" trong hợp đồng và "lần chuyển tiền" của khách là
+   HAI thứ khác nhau. Khách phải nộp đợt 1 là 9tr nhưng chuyển làm 2 lần
+   4tr5 trong cùng ngày — đó vẫn là ĐỢT 1, không phải đợt 1 và đợt 2.
+
+   Luật cũ sai ở chỗ: đợt nào đã nhận tiền dù chỉ 1 đồng cũng bị coi là
+   "đã xong", nên lần chuyển thứ hai nhảy sang đợt sau. Vì vậy 2.000đ của
+   chị mới rơi vào Đợt 2.
+
+   Luật mới:
+   - Tiền đổ vào đợt SỚM NHẤT CHƯA ĐỦ, đủ rồi mới tràn sang đợt kế tiếp.
+   - Một lần chuyển to có thể lấp nhiều đợt cùng lúc.
+   - Mỗi đợt giữ DANH SÁCH mã tham chiếu, không phải một mã.
+   - Tiền về nhiều hơn tổng các đợt thì phần dư ghi là "thu thừa".
+   ================================================================= */
+
+const dotCan = d => Number(d && d.soTien) || 0;
+const dotDaVe = d => Number(d && d.tienVe) || 0;
+const dotConThieu = d => Math.max(0, dotCan(d) - dotDaVe(d));
+
+/* Tính lại toàn bộ phân bổ của một đơn từ danh sách lần chuyển O.gd.
+   Làm lại từ đầu nên chạy bao nhiêu lần cũng ra cùng một kết quả. */
+function donPhanBoLai(O) {
+  if (!O) return null;
+  const ds = (O.gd || []).slice().sort((a, b) =>
+    String(a.ngay).localeCompare(String(b.ngay)) || String(a.khoa).localeCompare(String(b.khoa)));
+  (O.dots || []).forEach(d => { delete d.tienVe; delete d.maGD; delete d.ngayVe; d.gd = []; });
+  let du = 0;
+  ds.forEach(g => {
+    let con = Number(g.tien) || 0;
+    (O.dots || []).forEach(d => {
+      if (con <= 0) return;
+      const thieu = dotConThieu(d);
+      if (thieu <= 0) return;
+      const lay = Math.min(thieu, con);
+      d.tienVe = dotDaVe(d) + lay;
+      d.gd = d.gd || [];
+      d.gd.push({ ma: g.ma || "", ngay: g.ngay, tien: lay });
+      d.maGD = d.gd.map(x => x.ma).filter(Boolean).join(" · ");
+      d.ngayVe = g.ngay;
+      con -= lay;
+    });
+    if (con > 0) du += con;
+  });
+  O.tienVe = ds.reduce((s, g) => s + (Number(g.tien) || 0), 0);
+  O.thuThua = du;
+  const cuoi = ds[ds.length - 1];
+  O.ngayTienVe = cuoi ? cuoi.ngay : "";
+  O.maGD = cuoi ? (cuoi.ma || O.maGD || "") : "";
+  return O;
+}
+function phanBoLaiTatCa() {
+  let n = 0;
+  ORDERS.forEach(O => { if ((O.gd || []).length) { donPhanBoLai(O); n++; } });
+  if (n) persist();
+  return n;
+}
+
+/* ---------- khớp: chọn đợt sớm nhất CHƯA ĐỦ ---------- */
+(function () {
+  if (typeof khopGD !== "function") return;
+  const goc = khopGD;
+  khopGD = function (g) {
+    const r = goc.apply(this, arguments);
+    try {
+      if (!r || !r.oid) return r;
+      const O = orderOf(r.oid);
+      if (!O || !(O.dots || []).length) return r;
+      const i = O.dots.findIndex(d => dotConThieu(d) > 0);
+      r.dot = i;                                  /* -1 nếu mọi đợt đã đủ */
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* ---------- mọi đường ghi tiền đều tính lại phân bổ ---------- */
+(function () {
+  if (typeof napGD !== "function") return;
+  const goc = napGD;
+  napGD = function () {
+    const r = goc.apply(this, arguments);
+    try { ORDERS.forEach(O => { if ((O.gd || []).length) donPhanBoLai(O); }); persist(); } catch (e) { }
+    return r;
+  };
+})();
+(function () {
+  if (typeof gdKhopLai !== "function") return;
+  const goc = gdKhopLai;
+  gdKhopLai = function () {
+    const r = goc.apply(this, arguments);
+    try { phanBoLaiTatCa(); } catch (e) { }
+    return r;
+  };
+})();
+(function () {
+  if (typeof moGanGD !== "function") return;
+  const goc = moGanGD;
+  moGanGD = function (g) {
+    const r = goc.apply(this, arguments);
+    /* nút Gán bên trong phiếu tự ghi rồi mới gọi render — bám theo render để tính lại */
+    try {
+      const w = document.getElementById("pbm");
+      if (w) [].slice.call(w.querySelectorAll("button")).forEach(b => {
+        if (!/Gán/.test(b.textContent)) return;
+        const cu = b.onclick;
+        b.onclick = e => { const x = cu && cu.call(b, e); phanBoLaiTatCa(); render(); return x; };
+      });
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* ---------- cột mã tham chiếu: hiện đủ các lần chuyển của đợt đó ---------- */
+(function () {
+  const ve = (O, i) => {
+    const dots = O.dots || [];
+    const d = dots[i];
+    if (!d) return "";
+    const cuoi = i === dots.length - 1;
+    const ds = d.gd || [];
+    const thua = cuoi && (O.thuThua || 0) > 0
+      ? '<div class="sub-cell"><b>thu thừa ' + fmtVND(O.thuThua) + "</b></div>" : "";
+    if (!ds.length) return '<span class="muted">—</span>' + thua;
+    const thieu = dotConThieu(d);
+    return ds.map(x => '<div class="nw">' + esc(x.ma || "không mã")
+      + (ds.length > 1 ? ' <span class="sub">' + fmtVND(x.tien) + "</span>" : "") + "</div>").join("")
+      + (thieu > 0 ? '<div class="sub-cell">còn thiếu ' + fmtVND(thieu) + "</div>"
+        : (ds.length > 1 ? '<div class="sub-cell">đủ đợt · ' + ds.length + " lần chuyển</div>"
+          : '<div class="sub-cell">đủ đợt</div>'))
+      + thua;
+  };
+  [["maGD1", 0], ["maGD2", 1], ["maGD3", 2]].forEach(([k, i]) => {
+    if (!DCMAP[k]) return;
+    DCMAP[k].r = o => (i === 0 || (o.dots || []).length > i) ? ve(o, i) : "";
+  });
+  const veNgay = (O, i) => {
+    const d = (O.dots || [])[i];
+    if (!d || !(d.gd || []).length) return '<span class="muted">—</span>';
+    const ds = d.gd;
+    return ds.map(x => '<div class="nw">' + esc(fmtD(x.ngay)) + "</div>").join("");
+  };
+  [["ngayVe1", 0], ["ngayVe2", 1], ["ngayVe3", 2]].forEach(([k, i]) => {
+    if (!DCMAP[k]) return;
+    DCMAP[k].r = o => (i === 0 || (o.dots || []).length > i) ? veNgay(o, i) : "";
+  });
+})();
+
+/* ---------- nút tính lại + dải nhắc thu thừa ---------- */
+(function () {
+  if (typeof moDoiSoat !== "function") return;
+  const goc = moDoiSoat;
+  moDoiSoat = function () {
+    const r = goc.apply(this, arguments);
+    try {
+      const w = document.getElementById("cotwrap");
+      const than = w && w.querySelector(".cot-b");
+      if (!than || than.querySelector("[data-phanbo]")) return r;
+      const b = el("button", "btn sm", "↕ Tính lại phân bổ đợt");
+      b.setAttribute("data-phanbo", "1");
+      b.title = "Xếp lại tiền đã về vào các đợt theo thứ tự: đầy đợt 1 mới sang đợt 2";
+      b.style.margin = "0 0 10px 6px";
+      b.onclick = () => {
+        const n = phanBoLaiTatCa();
+        toast(n ? "Đã xếp lại tiền về cho " + n + " đơn" : "Chưa đơn nào có tiền về");
+        moDoiSoat(); render();
+      };
+      const neo = [].slice.call(than.querySelectorAll("button"))
+        .find(x => /Khớp lại các giao dịch/.test(x.textContent));
+      if (neo && neo.parentNode) neo.parentNode.insertBefore(b, neo.nextSibling);
+      else than.appendChild(b);
+
+      const thua = ORDERS.filter(O => (O.thuThua || 0) > 0);
+      if (thua.length) {
+        const n = el("div", "warnbar");
+        n.innerHTML = "<span>💰</span><span><b>" + thua.length + " đơn thu thừa</b> — tiền về nhiều hơn "
+          + "tổng các đợt: " + thua.slice(0, 4).map(O => esc(O.soHD || O.id) + " thừa " + fmtVND(O.thuThua)).join(" · ")
+          + (thua.length > 4 ? " …" : "") + ". Kiểm tra xem khách chuyển nhầm hay đơn ghi thiếu đợt.</span>";
+        than.appendChild(n);
+      }
+    } catch (e) { }
+    return r;
+  };
+})();
+/* ====== v91 — tiền về đợt nào ghi nhận đúng đợt đó, đợt cuối tự co lại ======
+   Chị chốt luật: kế toán tính doanh thu và hoa hồng theo SỐ TIỀN THẬT về
+   trong từng đợt, nên tiền về đợt nào thì ghi nhận hết vào đợt đó, KHÔNG
+   đẩy phần dư sang đợt sau. Riêng ĐỢT CUỐI thì số tiền phải thu được tính
+   lại = học phí ưu đãi − số tiền đã nộp các đợt trước.
+
+   Vì vậy:
+   - Một lần chuyển rơi vào đợt SỚM NHẤT chưa đủ, và nằm trọn ở đó.
+     Chuyển 12tr cho đợt 1 (kế hoạch 9tr) thì đợt 1 ghi nhận 12tr,
+     đợt 2 vẫn nguyên, đợt cuối tự trừ đi 12tr.
+   - Một đợt vẫn nhận được nhiều lần chuyển (9tr chia 2 lần 4tr5) — như v90.
+   - Đợt cuối = học phí ưu đãi − tổng đã nộp trước đó, không âm.
+   - Thu thừa chỉ tính khi tổng tiền về > học phí ưu đãi.
+   - Đợt kế toán đã tick "Đã hoàn thành" (tiền mặt, MPOS) được giữ nguyên,
+     tiền chuyển khoản không nhảy vào và số tiền của đợt đó không bị sửa.
+
+   Kế hoạch gốc của hợp đồng được giữ ở d.soTienGoc nên chạy lại bao nhiêu
+   lần cũng ra cùng một kết quả và luôn khôi phục được.
+   ======================================================================= */
+
+const dotGoc = d => { const v = Number(d && d.soTienGoc); return isFinite(v) ? v : (Number(d && d.soTien) || 0); };
+const dotVe = d => Number(d && d.tienVe) || 0;
+/* số tiền đợt này THỰC SỰ được ghi nhận: về nhiều hơn kế hoạch thì lấy số về */
+const dotGhi = d => Math.max(dotGoc(d), dotVe(d));
+
+function hocPhiDon(O) {
+  const v = Number(O && O.doanhThu);
+  if (isFinite(v) && v > 0) return v;
+  return ((O && O.dots) || []).reduce((s, d) => s + dotGoc(d), 0);
+}
+/* số tiền PHẢI THU của đợt i — đợt cuối co lại theo số đã nộp trước đó */
+function dotCanMoi(O, i) {
+  const ds = (O && O.dots) || [];
+  if (!ds[i]) return 0;
+  if (i < ds.length - 1) return dotGoc(ds[i]);
+  const truoc = ds.slice(0, i).reduce((s, d) => s + dotGhi(d), 0);
+  return Math.max(0, hocPhiDon(O) - truoc);
+}
+function dotThieuMoi(O, i) {
+  const d = ((O && O.dots) || [])[i];
+  if (!d) return 0;
+  if (d.daThu) return 0;
+  return Math.max(0, dotCanMoi(O, i) - dotVe(d));
+}
+
+/* ---------- xếp lại toàn bộ tiền về của một đơn ---------- */
+function donPhanBoLai(O) {
+  if (!O) return null;
+  const ds = O.dots || [];
+  /* nhớ kế hoạch gốc một lần duy nhất */
+  ds.forEach(d => { if (d.soTienGoc === undefined || d.soTienGoc === null) d.soTienGoc = Number(d.soTien) || 0; });
+  /* xoá sạch dấu vết phân bổ cũ rồi làm lại từ đầu */
+  ds.forEach(d => {
+    d.gd = []; delete d.tienVe; delete d.maGD; delete d.ngayVe;
+    if (!d.daThu) d.soTien = dotGoc(d);
+  });
+
+  const gds = (O.gd || []).slice().sort((a, b) =>
+    String(a.ngay).localeCompare(String(b.ngay)) || String(a.khoa).localeCompare(String(b.khoa)));
+
+  gds.forEach(g => {
+    const tien = Number(g.tien) || 0;
+    let i = -1;
+    for (let j = 0; j < ds.length; j++) {
+      if (ds[j].daThu) continue;                       /* đã thu tiền mặt rồi */
+      if (dotVe(ds[j]) < dotCanMoi(O, j)) { i = j; break; }
+    }
+    if (i < 0) i = ds.length - 1;                      /* mọi đợt đã đủ → dồn vào đợt cuối */
+    const d = ds[i];
+    if (!d) return;
+    d.tienVe = dotVe(d) + tien;
+    d.gd = d.gd || [];
+    d.gd.push({ ma: g.ma || "", ngay: g.ngay, tien: tien, khoa: g.khoa || "" });
+    d.maGD = d.gd.map(x => x.ma).filter(Boolean).join(" · ");
+    d.ngayVe = g.ngay;
+  });
+
+  /* ghi nhận: đợt thường lấy số đã về nếu vượt kế hoạch, đợt cuối tự co lại */
+  ds.forEach((d, i) => {
+    if (d.daThu) return;
+    d.soTien = (i < ds.length - 1) ? dotGhi(d) : dotCanMoi(O, i);
+  });
+
+  const tong = gds.reduce((s, g) => s + (Number(g.tien) || 0), 0);
+  O.tienVe = tong;
+  O.thuThua = Math.max(0, tong - hocPhiDon(O));
+  const cuoi = gds[gds.length - 1];
+  O.ngayTienVe = cuoi ? cuoi.ngay : "";
+  O.maGD = cuoi ? (cuoi.ma || O.maGD || "") : "";
+  return O;
+}
+
+/* ---------- khớp: chọn đợt sớm nhất chưa đủ theo luật mới ---------- */
+(function () {
+  if (typeof khopGD !== "function") return;
+  const goc = khopGD;
+  khopGD = function (g) {
+    const r = goc.apply(this, arguments);
+    try {
+      if (!r || !r.oid) return r;
+      const O = orderOf(r.oid);
+      if (!O || !(O.dots || []).length) return r;
+      let i = -1;
+      for (let j = 0; j < O.dots.length; j++) {
+        if (O.dots[j].daThu) continue;
+        if (dotVe(O.dots[j]) < dotCanMoi(O, j)) { i = j; break; }
+      }
+      r.dot = i;
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* ---------- cột mã tham chiếu: nói rõ đợt cuối đã co lại ---------- */
+(function () {
+  const ve = (O, i) => {
+    const dots = O.dots || [];
+    const d = dots[i];
+    if (!d) return "";
+    const cuoi = i === dots.length - 1;
+    const ds = d.gd || [];
+    const thua = cuoi && (O.thuThua || 0) > 0
+      ? '<div class="sub-cell"><b>thu thừa ' + fmtVND(O.thuThua) + "</b></div>" : "";
+    const can = dotCanMoi(O, i);
+    const coLai = cuoi && dots.length > 1 && can !== dotGoc(d)
+      ? (can > 0
+        ? '<div class="sub-cell">đợt cuối còn phải thu <b>' + fmtVND(can)
+        + "</b><br>(học phí ưu đãi − đã nộp)</div>"
+        : '<div class="sub-cell">đã nộp đủ học phí<br>đợt này không phải thu thêm</div>')
+      : "";
+    if (!ds.length) return '<span class="muted">—</span>' + coLai + thua;
+    const thieu = dotThieuMoi(O, i);
+    const hon = !cuoi && dotVe(d) > dotGoc(d)
+      ? '<div class="sub-cell">nộp hơn kế hoạch ' + fmtVND(dotVe(d) - dotGoc(d))
+      + " — ghi nhận đủ vào đợt này</div>" : "";
+    return ds.map(x => '<div class="nw">' + esc(x.ma || "không mã")
+      + (ds.length > 1 ? ' <span class="sub">' + fmtVND(x.tien) + "</span>" : "") + "</div>").join("")
+      + (thieu > 0 ? '<div class="sub-cell">còn thiếu ' + fmtVND(thieu) + "</div>"
+        : (ds.length > 1 ? '<div class="sub-cell">đủ đợt · ' + ds.length + " lần chuyển</div>"
+          : '<div class="sub-cell">đủ đợt</div>'))
+      + hon + coLai + thua;
+  };
+  [["maGD1", 0], ["maGD2", 1], ["maGD3", 2]].forEach(([k, i]) => {
+    if (typeof DCMAP === "undefined" || !DCMAP[k]) return;
+    DCMAP[k].r = o => (i === 0 || (o.dots || []).length > i) ? ve(o, i) : "";
+  });
+})();
+
+/* ---------- nút tính lại: đổi lời giải thích cho đúng luật mới ---------- */
+(function () {
+  if (typeof moDoiSoat !== "function") return;
+  const goc = moDoiSoat;
+  moDoiSoat = function () {
+    const r = goc.apply(this, arguments);
+    try {
+      const b = document.querySelector("[data-phanbo]");
+      if (b) b.title = "Tiền về đợt nào ghi nhận đúng đợt đó; đợt cuối = học phí ưu đãi − đã nộp trước đó";
     } catch (e) { }
     return r;
   };
