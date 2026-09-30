@@ -490,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v96.0 · 30/09/2026";
+window.ALES_BAN = "v97.0 · 30/09/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -34127,6 +34127,7 @@ function hdAnhTuXml(xml, rongPx, cao) {
     if (typeof KY_MAU === "undefined") return;
     KY_MAU.kyCach = 0;        /* nhích ảnh dấu so với chỗ dòng "(Ký, đóng dấu)" cũ */
     KY_MAU.kyLech = 0;        /* nhích chữ ký xuống; 0 = tự căn giữa lòng dấu */
+    KY_MAU.kyNgang = 0;       /* nhích ảnh dấu sang phải (cm), số âm là sang trái */
     if (KY_MAU.tronDK === undefined) KY_MAU.tronDK = 0;     /* 0 = bằng đúng dấu giáp lai */
   } catch (e) { }
 })();
@@ -34256,7 +34257,10 @@ async function hdAnhTrangV93(O, stk, ty) {
         const hd = dauDoHop(aTron);
         const s = (caoTron * ty2) / Math.max(1, hd.cao);
         const W = aTron.width * s, H = aTron.height * s;
-        const tX = xKy - ((hd.x1 + hd.x2) / 2) * s;
+        /* v97: căn giữa theo TOÀN BỘ phần mực của ảnh (gồm cả dòng chữ trong ảnh),
+           để dòng "(Ký, đóng dấu)" nằm cân đối dưới chữ ĐẠI DIỆN BÊN A */
+        const ngang = (typeof kySo === "function" ? +kySo("kyNgang") : 0) * CM;
+        const tX = xKy + ngang - ((hd.mucX1 + hd.mucX2) / 2) * s;
         const tY = tren - hd.mucY1 * s;
         if (aKy) {
           const hk = dauDoHop(aKy);
@@ -34312,10 +34316,11 @@ async function hdAnhTrangV93(O, stk, ty) {
       o("Nhích ảnh dấu lên/xuống (cm)", "kyCach", "0 = đúng chỗ dòng “(Ký, đóng dấu)” cũ · số âm là nhích lên");
       o("Chiều cao chữ ký (cm)", "kyCao", "mặc định 2,2");
       o("Nhích chữ ký xuống (cm)", "kyLech", "0 = tự căn giữa lòng dấu");
+      o("Nhích ảnh dấu sang phải (cm)", "kyNgang", "0 = tự căn giữa cột · số âm là sang trái");
       o("Đường kính dấu tròn (cm)", "tronDK", "để 0 là lấy đúng bằng dấu giáp lai — "
         + (typeof dauCaoAnh === "function" ? String(dauCaoAnh()).replace(".", ",") : "4,6") + "cm");
       const bv = el("button", "btn sm", "↺ Về mặc định");
-      bv.onclick = () => { ["kyCach", "kyCao", "kyLech", "tronDK"].forEach(k => kyDat(k, KY_MAU[k])); render(); };
+      bv.onclick = () => { ["kyCach", "kyCao", "kyLech", "kyNgang", "tronDK"].forEach(k => kyDat(k, KY_MAU[k])); render(); };
       b.appendChild(bv);
       b.appendChild(el("div", "sub", "Trên ảnh HĐ, dòng chữ “(Ký, đóng dấu)” dưới ĐẠI DIỆN BÊN A "
         + "được bỏ đi và ảnh dấu của chị (đã có sẵn dòng chữ đó) đặt đúng vào chỗ ấy, "
@@ -34678,7 +34683,8 @@ const DAU_HOP = {};
 function dauDoHop(im) {
   const khoa = im && im.src ? im.src.length + "|" + im.src.slice(-90) : "x";
   if (DAU_HOP[khoa]) return DAU_HOP[khoa];
-  const ra = { x1: 0, y1: 0, x2: im.width, y2: im.height, cao: im.height, mucY1: 0, mucY2: im.height };
+  const ra = { x1: 0, y1: 0, x2: im.width, y2: im.height, cao: im.height,
+    mucY1: 0, mucY2: im.height, mucX1: 0, mucX2: im.width };
   try {
     const W = Math.min(320, im.width) || 1;
     const H = Math.max(1, Math.round(im.height * W / im.width));
@@ -34687,13 +34693,15 @@ function dauDoHop(im) {
     const x = c.getContext("2d");
     x.drawImage(im, 0, 0, W, H);
     const d = x.getImageData(0, 0, W, H).data;
-    let dx1 = 1e9, dy1 = 1e9, dx2 = -1, dy2 = -1, mY = 1e9, mY2 = -1, n = 0;
+    let dx1 = 1e9, dy1 = 1e9, dx2 = -1, dy2 = -1, mY = 1e9, mY2 = -1, mX = 1e9, mX2 = -1, n = 0;
     for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
       const o = (yy * W + xx) * 4, r = d[o], g = d[o + 1], b = d[o + 2], a = d[o + 3];
       if (a < 40) continue;
       if (r > 235 && g > 235 && b > 235) continue;      /* nền trắng của ảnh */
       if (yy < mY) mY = yy;
       if (yy > mY2) mY2 = yy;
+      if (xx < mX) mX = xx;
+      if (xx > mX2) mX2 = xx;
       if (r > 110 && r > g * 1.35 && r > b * 1.35) {
         n++;
         if (xx < dx1) dx1 = xx;
@@ -34710,6 +34718,8 @@ function dauDoHop(im) {
     }
     ra.mucY1 = (mY < 1e9 ? mY : 0) * ty;
     ra.mucY2 = (mY2 >= 0 ? mY2 + 1 : H) * ty;
+    ra.mucX1 = (mX < 1e9 ? mX : 0) * ty;
+    ra.mucX2 = (mX2 >= 0 ? mX2 + 1 : W) * ty;
   } catch (e) { }
   DAU_HOP[khoa] = ra;
   return ra;
@@ -34923,6 +34933,294 @@ async function mailGuiDemo(O) {
         catch (er) { mailBaoLoi(O, er); b.disabled = false; b.textContent = cu; }
       };
       ft.appendChild(b);
+    } catch (e) { }
+    return r;
+  };
+})();
+/* ============ v97 — dấu cân giữa, ảnh HĐ của Sales chỉ giáp lai,
+                       logo thư gửi được, và nút Lưu phiếu có sổ sửa ============
+   1. Ảnh dấu căn giữa theo TOÀN BỘ phần mực nên dòng chữ trong ảnh nằm cân
+      đối dưới chữ ĐẠI DIỆN BÊN A, không lệch hẳn sang trái (đã sửa ở v93).
+   2. Ảnh HĐ mở từ phiếu khách (L7/L8) chỉ có dấu giáp lai — không dấu tròn,
+      không chữ ký — và thư demo gửi đi đúng bộ ảnh ấy.
+   3. Gmail cắt bỏ ảnh nhúng thẳng vào thư, nên logo chuyển sang địa chỉ ảnh
+      trên GitHub. Thêm nút "Xem trước thư" để soi trước khi gửi.
+   4. Phiếu đăng ký có nút LƯU: lưu xong hiện bảng tóm tắt và nút Sửa; mỗi lần
+      sửa rồi lưu lại sẽ ghi một dòng mới vào lịch sử khách, ghi rõ cũ → mới.
+   ========================================================================= */
+
+/* ================= 1. ẢNH HĐ CỦA SALES: CHỈ DẤU GIÁP LAI ================= */
+(function () {
+  if (typeof moAnhHopDong !== "function") return;
+  const goc = moAnhHopDong;
+  moAnhHopDong = async function (O, stk, anSo) {
+    /* anSo chỉ được bật khi mở từ phiếu khách của Sales/CSKH */
+    if (anSo) HD_CHI_GIAPLAI = 1;
+    try { return await goc.call(this, O, stk, anSo); }
+    finally { HD_CHI_GIAPLAI = 0; }
+  };
+})();
+
+/* ================= 2. LOGO TRONG THƯ ================= */
+/* Gmail bỏ ảnh nhúng dạng data: nên phải trỏ tới một địa chỉ ảnh thật.
+   Ảnh logo-ales.png tải lên cùng chỗ với index.html trên GitHub. */
+const MAIL_LOGO_URL_MAC_DINH = "https://anhngualeshopdongmau-dev.github.io/ales-crm/logo-ales.png";
+function mailLogoURL() {
+  try { return String((mailCH().logoUrl || "").trim() || MAIL_LOGO_URL_MAC_DINH); }
+  catch (e) { return MAIL_LOGO_URL_MAC_DINH; }
+}
+(function () {
+  if (typeof mailThan !== "function") return;
+  const goc = mailThan;
+  mailThan = function () {
+    let h = goc.apply(this, arguments);
+    try {
+      h = h.split(MAIL_ADD2_CU).join(MAIL_ADD2);
+      const u = mailLogoURL();
+      h = h.replace(/<img src="[^"]*" alt="ALES"([^>]*)>/,
+        '<img src="' + u + '" alt="ALES" width="150"$1>');
+    } catch (e) { }
+    return h;
+  };
+})();
+
+/* ================= 3. EMAIL: Ô ĐỊA CHỈ LOGO + XEM TRƯỚC THƯ ================= */
+function mailXemTruoc(O) {
+  const box = pbMo ? pbMo("Xem trước thư gửi khách", "đúng nội dung web sẽ gửi", "✉") : null;
+  if (!box) return;
+  const k = khOf(O.khId) || {};
+  box.appendChild(el("div", "warnbar info",
+    "<span>✉</span><span>Tiêu đề: <b>" + esc(mailChuDe(O)) + "</b><br>"
+    + "Gửi tới: <b>" + esc(k.email || O.email || "(khách chưa có email)") + "</b>"
+    + (nsMail(k.owner) ? " · BCC <b>" + esc(nsMail(k.owner)) + "</b>" : "") + "</span>"));
+  const c = el("div", "card"); c.style.marginTop = "8px";
+  const b = el("div", "card-b");
+  b.style.cssText = "background:#fff;color:#000";
+  b.innerHTML = mailThan(O);
+  c.appendChild(b); box.appendChild(c);
+  box.appendChild(el("div", "sub",
+    "Ảnh logo lấy từ: " + esc(mailLogoURL())
+    + " — ảnh không hiện tức là tệp logo-ales.png chưa được tải lên GitHub."));
+}
+(function () {
+  if (typeof viewDLTaiKhoan !== "function") return;
+  const goc = viewDLTaiKhoan;
+  viewDLTaiKhoan = function (v) {
+    const r = goc.apply(this, arguments);
+    try {
+      if ((S.dltkTab || "pq") !== "ns" || myRole() !== "admin") return r;
+      const c = el("div", "card"); c.style.marginTop = "10px";
+      c.appendChild(el("div", "card-h", "<h3>Logo trong thư gửi khách</h3>"
+        + '<span class="sub">Gmail không nhận ảnh nhúng thẳng, phải trỏ tới địa chỉ ảnh thật</span>'));
+      const b = el("div", "card-b");
+      b.appendChild(el("div", "nb-hint",
+        "Tải tệp <b>logo-ales.png</b> lên GitHub <b>cùng chỗ với index.html</b>, "
+        + "rồi để nguyên địa chỉ dưới đây là thư có logo."));
+      const i = el("input"); i.type = "text"; i.value = mailLogoURL();
+      i.style.cssText = "width:100%;max-width:520px;margin-top:6px";
+      i.onchange = () => { mailCH().logoUrl = i.value.trim(); persist(); toast("Đã lưu"); render(); };
+      b.appendChild(i);
+      const xem = el("div");
+      xem.style.cssText = "margin-top:8px;padding:8px;background:#fff;border:1px solid var(--border);border-radius:8px;display:inline-block";
+      xem.innerHTML = '<img src="' + esc(mailLogoURL()) + '" alt="logo" style="width:120px;display:block">';
+      b.appendChild(xem);
+      b.appendChild(el("div", "sub", "Ô trên trống ảnh là tệp chưa lên GitHub."));
+      c.appendChild(b); v.appendChild(c);
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* ================= 4. PHIẾU ĐĂNG KÝ: NÚT LƯU VÀ SỔ SỬA ================= */
+const DK_THEM = [
+  { k: "loaiHD", n: "Loại hợp đồng", g: (k, O) => O.loaiHD === "giay" ? "Giấy" : "Online" },
+  { k: "taiNghe", n: "Tặng tai nghe", g: (k, O) => ((O.qua || {}).taiNghe || {}).co ? "Có" : "Không" },
+  { k: "giaSu", n: "Tặng gia sư bổ trợ", g: (k, O) => ((O.qua || {}).giaSu || {}).co ? "Có" : "Không" },
+  { k: "giaSuBuoi", n: "Số buổi bổ trợ", g: (k, O) => String(((O.qua || {}).giaSu || {}).buoi || "") },
+  { k: "nguoiGoi", n: "Người gọi", g: (k, O) => O.nguoiGoi || "" },
+  { k: "nguoiChot", n: "Người chốt", g: (k, O) => O.nguoiChot || "" },
+  { k: "stkHP", n: "STK nhận học phí", g: (k, O) => (HD_STK[stkCuaDon(O)] || HD_STK.cty).ten },
+  { k: "email", n: "Email khách", g: (k, O) => k.email || O.email || "" },
+  {
+    k: "dots", n: "Các đợt học phí",
+    g: (k, O) => (O.dots || []).map((d, i) => "Đợt " + (i + 1) + ": " + fmtVND(d.soTien) + " · " + fmtD(d.ngay)).join(" | ")
+  }
+];
+function dkMoiMuc() {
+  const ra = [];
+  try { DKF.forEach(f => ra.push({ k: "dkf_" + f.k, n: f.n, g: f.g, t: f.t })); } catch (e) { }
+  DK_THEM.forEach(f => ra.push(f));
+  return ra;
+}
+function dkDoc(k, O, f) {
+  let v;
+  try { v = f.g(k, O); } catch (e) { v = ""; }
+  if (v == null) return "";
+  if (f.t === "tien") return fmtVND(soTien ? soTien(v) : v);
+  if (f.t === "date") return v ? fmtD(v) : "";
+  return String(v).trim();
+}
+function dkChup(k, O) {
+  const ra = {};
+  dkMoiMuc().forEach(f => { ra[f.k] = dkDoc(k, O, f); });
+  return ra;
+}
+function dkKhac(k, O) {
+  const cu = (O.dkLuu && O.dkLuu.snap) || null;
+  const nay = dkChup(k, O);
+  if (!cu) return null;                       /* chưa lưu lần nào */
+  const ra = [];
+  dkMoiMuc().forEach(f => {
+    const a = String(cu[f.k] == null ? "" : cu[f.k]), b = String(nay[f.k] == null ? "" : nay[f.k]);
+    if (a !== b) ra.push({ n: f.n, cu: a, moi: b });
+  });
+  return ra;
+}
+function dkLuuPhieu(k, O) {
+  const ds = dkKhac(k, O);
+  const nay = dkChup(k, O);
+  const lan = (O.dkLuu && O.dkLuu.lan) || 0;
+  k.acts = k.acts || [];
+  if (!O.dkLuu) {
+    const dien = dkMoiMuc().filter(f => nay[f.k]).length;
+    k.acts.push({
+      t: iso(TODAY), type: "sys", by: S.me,
+      text: "Lưu phiếu đăng ký lần đầu — đã điền " + dien + "/" + dkMoiMuc().length + " mục."
+    });
+  } else if (ds && ds.length) {
+    k.acts.push({
+      t: iso(TODAY), type: "sys", by: S.me,
+      text: "Sửa phiếu đăng ký (lần lưu thứ " + (lan + 1) + ") — " + ds.length + " mục:\n"
+        + ds.map(x => "• " + x.n + ": " + (x.cu || "(trống)") + " → " + (x.moi || "(trống)")).join("\n")
+    });
+  } else {
+    toast("Không có gì thay đổi so với lần lưu trước");
+    return 0;
+  }
+  O.dkLuu = {
+    snap: nay, lan: lan + 1, luc: iso(TODAY),
+    gio: new Date().toTimeString().slice(0, 5), by: S.me
+  };
+  O.dkSuaLS = (O.dkSuaLS || []).concat(ds && ds.length ? [{
+    luc: iso(TODAY), gio: new Date().toTimeString().slice(0, 5), by: S.me, ds
+  }] : []);
+  persist();
+  return 1;
+}
+function dkThanhLuu(bx, k, O, veLai) {
+  if (bx.querySelector("[data-dkluu]")) return;
+  const w = el("div", "nb-f");
+  w.setAttribute("data-dkluu", "1");
+  w.style.display = "block";
+  const ds = dkKhac(k, O);
+  const chuaLuu = !O.dkLuu;
+  const soSua = ds ? ds.length : 0;
+
+  const bar = el("div", "warnbar" + (chuaLuu ? " wn" : soSua ? " wn" : " ok"));
+  bar.innerHTML = chuaLuu
+    ? "<span>💾</span><span><b>Phiếu chưa được lưu lần nào.</b> Bấm <b>Lưu phiếu</b> để chốt "
+    + "thông tin và bắt đầu ghi sổ mọi lần sửa về sau.</span>"
+    : soSua
+      ? "<span>✏</span><span><b>Có " + soSua + " mục đã sửa chưa lưu.</b> Bấm <b>Lưu thay đổi</b> "
+      + "để ghi một dòng mới vào lịch sử khách.</span>"
+      : "<span>✔</span><span><b>Đã lưu</b> lúc " + esc((O.dkLuu.gio || "") + " " + fmtD(O.dkLuu.luc))
+      + " · " + esc((userOf(O.dkLuu.by) || {}).name || "")
+      + " · lần lưu thứ " + O.dkLuu.lan + "</span>";
+  w.appendChild(bar);
+
+  if (soSua) {
+    const t = el("div", "tbl-wrap"); t.style.marginTop = "6px";
+    const tb = el("table");
+    tb.innerHTML = "<thead><tr><th>Mục</th><th>Đang lưu</th><th>Sửa thành</th></tr></thead>";
+    const b2 = el("tbody");
+    ds.forEach(x => b2.appendChild(el("tr", "", "<td>" + esc(x.n) + "</td>"
+      + '<td class="sub-cell">' + esc(x.cu || "—") + "</td>"
+      + "<td><b>" + esc(x.moi || "—") + "</b></td>")));
+    tb.appendChild(b2); t.appendChild(tb); w.appendChild(t);
+  }
+
+  const hang = el("div", "row"); hang.style.cssText = "gap:8px;margin-top:8px;flex-wrap:wrap";
+  const bl = el("button", "btn pri", chuaLuu ? "💾 Lưu phiếu" : soSua ? "💾 Lưu thay đổi" : "💾 Lưu lại");
+  bl.disabled = !chuaLuu && !soSua;
+  bl.onclick = e => {
+    e.stopPropagation();
+    if (dkLuuPhieu(k, O)) toast("Đã lưu phiếu đăng ký");
+    if (veLai) veLai(); else render();
+  };
+  hang.appendChild(bl);
+  if (O.dkLuu) {
+    const bx2 = el("button", "btn sm", "📋 Xem bản đã lưu");
+    bx2.onclick = e => { e.stopPropagation(); dkXemLuu(k, O); };
+    hang.appendChild(bx2);
+    if ((O.dkSuaLS || []).length) {
+      const bs = el("button", "btn sm", "🕘 Sổ sửa (" + O.dkSuaLS.length + ")");
+      bs.onclick = e => { e.stopPropagation(); dkXemSoSua(k, O); };
+      hang.appendChild(bs);
+    }
+  }
+  w.appendChild(hang);
+  const ft = bx.querySelector(".nb-ft");
+  if (ft) bx.insertBefore(w, ft); else bx.appendChild(w);
+}
+function dkXemLuu(k, O) {
+  const box = pbMo ? pbMo("Bản đã lưu của phiếu đăng ký",
+    (k.hoTenHV || "") + " · lần lưu thứ " + ((O.dkLuu || {}).lan || 0), "📋") : null;
+  if (!box) return;
+  const snap = (O.dkLuu || {}).snap || {};
+  const w = el("div", "tbl-wrap");
+  const t = el("table");
+  t.innerHTML = "<thead><tr><th>Mục</th><th>Nội dung đã lưu</th></tr></thead>";
+  const tb = el("tbody");
+  dkMoiMuc().forEach(f => {
+    tb.appendChild(el("tr", "", "<td>" + esc(f.n) + "</td>"
+      + '<td style="white-space:pre-wrap">' + esc(snap[f.k] || "—") + "</td>"));
+  });
+  t.appendChild(tb); w.appendChild(t); box.appendChild(w);
+  box.appendChild(el("div", "sub", "Đây là bản chốt lần lưu gần nhất. "
+    + "Số liệu chạy sang mục Đơn hàng luôn là bản MỚI NHẤT đang điền trên phiếu."));
+}
+function dkXemSoSua(k, O) {
+  const box = pbMo ? pbMo("Sổ sửa phiếu đăng ký", (k.hoTenHV || "") + " · "
+    + (O.dkSuaLS || []).length + " lần sửa", "🕘") : null;
+  if (!box) return;
+  (O.dkSuaLS || []).slice().reverse().forEach((x, i) => {
+    const c = el("div", "card"); c.style.marginTop = "8px";
+    c.appendChild(el("div", "card-h", "<h3>Lần sửa " + ((O.dkSuaLS || []).length - i) + "</h3>"
+      + '<span class="sub">' + esc((x.gio || "") + " " + fmtD(x.luc)) + " · "
+      + esc((userOf(x.by) || {}).name || "") + "</span>"));
+    const w = el("div", "tbl-wrap");
+    const t = el("table");
+    t.innerHTML = "<thead><tr><th>Mục</th><th>Trước</th><th>Sau</th></tr></thead>";
+    const tb = el("tbody");
+    (x.ds || []).forEach(d => tb.appendChild(el("tr", "", "<td>" + esc(d.n) + "</td>"
+      + '<td class="sub-cell">' + esc(d.cu || "—") + "</td><td><b>" + esc(d.moi || "—") + "</b></td>")));
+    t.appendChild(tb); w.appendChild(t); c.appendChild(w); box.appendChild(c);
+  });
+}
+(function () {
+  if (typeof moKHM !== "function") return;
+  const goc = moKHM;
+  moKHM = function (id) {
+    const r = goc.apply(this, arguments);
+    try {
+      const w = document.getElementById("khm");
+      const k = khOf(id);
+      const O = k && typeof donChinh === "function" ? donChinh(k) : null;
+      if (!w || !O) return r;
+      const bx = [].slice.call(w.querySelectorAll(".note-blk"))
+        .filter(x => /Phiếu đăng ký/.test((x.querySelector(".nb-h") || {}).textContent || ""))[0];
+      if (!bx) return r;
+      dkThanhLuu(bx, k, O, () => { render(); moKHM(id); });
+      /* sửa ô nào thì thanh Lưu cập nhật ngay */
+      [].slice.call(bx.querySelectorAll("input,select,textarea")).forEach(o => {
+        if (o._dkluu) return;
+        o._dkluu = 1;
+        o.addEventListener("change", () => setTimeout(() => {
+          const cu = bx.querySelector("[data-dkluu]");
+          if (cu) cu.remove();
+          dkThanhLuu(bx, k, O, () => { render(); moKHM(id); });
+        }, 0));
+      });
     } catch (e) { }
     return r;
   };
