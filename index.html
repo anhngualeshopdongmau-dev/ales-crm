@@ -490,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v111.0 · 02/10/2026";
+window.ALES_BAN = "v112.0 · 02/10/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -37982,4 +37982,171 @@ function qtThemLoiGiai() {
     + "Dán vào đây một lần, từ nay máy này nhớ luôn.";
   nhan.parentNode.insertBefore(d, nhan.nextSibling);
 }
+/* ============ v112 — LẤY SỐ LIÊN TỤC · BỚT CHỮ CHO ĐỠ RỐI ============
+   1. Lấy số Pancake: đặt cố định là CHẠY LIÊN TỤC. Bỏ dãy nút và cái chip
+      "Google đang tự lấy số 30 phút/lần" trên màn Data từ Pancake, thay bằng
+      MỘT dòng trạng thái gọn. Các nút cũ không mất — gom vào "⚙ Cài đặt lấy số"
+      cho Ban điều hành, mở ra khi cần.
+      Web giờ tự hỏi kho mỗi phút ở BẤT KỲ màn nào (Ban điều hành và Marketing),
+      không phải đứng đúng màn Chờ chia mới chạy.
+   2. Bớt dải cảnh báo: khoá ô vẫn khoá, nhưng thay dải đỏ to bằng một dòng chữ
+      nhỏ. Màn Dữ liệu Marketing với Sales/CSKH thì khoá im, không hiện dải nào.
+   ====================================================================== */
+
+/* ---------- 1. tự lấy số ở mọi màn, cho người có quyền chia số ---------- */
+function pcAiLay() { const r = myRole(); return r === "admin" || r === "mkt" || r === "ql"; }
+var PC_NHIP = { lan: 0, dem: 0 };
+
+(function () {
+  if (typeof pcDangXemChoChia !== "function") return;
+  /* không còn bó hẹp ở màn Chờ chia nữa */
+  pcDangXemChoChia = function () { return pcAiLay(); };
+})();
+(function () {
+  if (typeof pcKeoAm !== "function") return;
+  const goc = pcKeoAm;
+  pcKeoAm = async function () {
+    const r = await goc.apply(this, arguments);
+    try { PC_NHIP.lan = Date.now(); PC_NHIP.dem++; } catch (e) { }
+    return r;
+  };
+})();
+
+/* ---------- thanh Pancake gọn lại ---------- */
+(function () {
+  if (typeof adsThanhPancake !== "function") return;
+  adsThanhPancake = function (v) {
+    if (!pcAiLay()) return;
+    const bar = el("div", "row");
+    bar.style.cssText = "gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px";
+
+    const chip = el("span", "chip ok");
+    chip.textContent = "⚡ Tự lấy số liên tục";
+    chip.title = "Web hỏi kho mỗi phút, không phải chờ 30 phút";
+    bar.appendChild(chip);
+
+    const lan = el("span", "sub");
+    lan.textContent = PC_NHIP.lan
+      ? "lần gần nhất " + new Date(PC_NHIP.lan).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
+      : "đang lấy lần đầu…";
+    bar.appendChild(lan);
+
+    bar.appendChild(el("div", "grow"));
+
+    if (myRole() === "admin" || myRole() === "mkt") {
+      const b = el("button", "btn sm", "⚙ Cài đặt lấy số");
+      b.onclick = () => pcManCaiDat();
+      bar.appendChild(b);
+    }
+    v.appendChild(bar);
+
+    /* v65 gắn bảng "Quảng cáo nào chạy tỉnh nào" bằng cách BỌC hàm này. Bản này
+       dựng lại hàm nên bọc đó mất — phải gọi lại cho bảng đừng biến mất. */
+    try { if ((S.adsTab || "duyet") === "duyet" && typeof adTinhBang === "function") adTinhBang(v); } catch (e) { }
+  };
+})();
+
+function pcManCaiDat() {
+  const w = document.getElementById("cotwrap"); if (!w) return;
+  w.innerHTML = ""; w.classList.add("on");
+  const c = el("div", "cot-card"); c.style.cssText = "max-width:620px";
+  const h = el("div", "cot-h");
+  h.innerHTML = "<b>⚙ Cài đặt lấy số Pancake</b>";
+  h.appendChild(el("div", "grow"));
+  const x = el("button", "btn sm", "Đóng"); x.onclick = () => w.classList.remove("on");
+  h.appendChild(x); c.appendChild(h);
+  const b = el("div", "cot-b");
+
+  b.appendChild(el("div", "sub",
+    "Web <b>tự hỏi kho mỗi phút</b> khi có người của Ban điều hành, Marketing hay Quản lý mở web — "
+    + "không phải đứng đúng màn nào. Ngoài ra Google còn tự chạy nền theo lịch, kể cả lúc không ai mở web."));
+
+  const r1 = el("div", "row"); r1.style.cssText = "gap:8px;flex-wrap:wrap;margin:10px 0";
+  const b1 = el("button", "btn pri", "⟳ Lấy số ngay");
+  b1.onclick = async () => {
+    b1.disabled = true; const t = b1.textContent; b1.textContent = "Đang lấy…";
+    try { await pcKeoTuKho(2); } finally { b1.disabled = false; b1.textContent = t; render(); }
+  };
+  const soTok = Object.keys(typeof PCTOK !== "undefined" ? PCTOK : {}).length;
+  const b3 = el("button", "btn", "🔗 Kết nối Pancake" + (soTok ? " (" + soTok + " page)" : ""));
+  b3.onclick = e => { e.stopPropagation(); moKetNoiPancake(); };
+  r1.appendChild(b1); r1.appendChild(b3);
+  if (myRole() === "admin") {
+    const b4 = el("button", "btn", "☁ Bật Google chạy nền");
+    b4.onclick = async () => { await pcBatChayNen(); render(); };
+    r1.appendChild(b4);
+  }
+  b.appendChild(r1);
+
+  const tt = el("div", "sub"); tt.textContent = "Đang hỏi kho xem lịch chạy nền…";
+  b.appendChild(tt);
+  pcTrangThaiNen().then(j => {
+    if (!j || j.banCu) {
+      tt.innerHTML = '<span class="chip dg">Kho đang chạy Apps Script bản cũ</span> · '
+        + "vào ☁ Kho chung kiểm tra lại đường dẫn /exec";
+      return;
+    }
+    tt.innerHTML = j.lich
+      ? '<span class="chip ok">Google có chạy nền</span> · ' + ((j.ds || []).length) + " page trên kho"
+      : '<span class="chip wn">Chưa bật chạy nền</span> · bấm “☁ Bật Google chạy nền”';
+  });
+
+  b.appendChild(el("div", "sub", "<br><b>Muốn số về đúng lúc khách vừa nhắn?</b> "
+    + "Cách duy nhất thật sự tức thì là để <b>Pancake tự bắn sang</b> (webhook) thay vì web đi hỏi. "
+    + "Cái đó khai một lần trong Pancake — chị bảo em là em làm."));
+  c.appendChild(b); w.appendChild(c);
+}
+
+/* bỏ dòng cũ "⚡ Đang mở màn này thì web tự bảo Google lấy số ngay…" nếu còn */
+(function () {
+  const goc = render;
+  render = function () {
+    const r = goc.apply(this, arguments);
+    try {
+      const v = document.getElementById("view"); if (!v) return r;
+      [...v.querySelectorAll(".sub")].forEach(e => {
+        if (/Đang mở màn này thì web tự bảo Google/.test(e.textContent || "")) e.remove();
+      });
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* ---------- 2. bớt dải cảnh báo cho đỡ rối ---------- */
+/* phiếu khách L9: vẫn khoá, nhưng chỉ một dòng chữ nhỏ thay vì dải đỏ */
+(function () {
+  if (typeof khoaPhieuKH !== "function") return;
+  const goc = khoaPhieuKH;
+  khoaPhieuKH = function () {
+    const r = goc.apply(this, arguments);
+    try {
+      const m = document.getElementById("khm"); if (!m) return r;
+      [...m.querySelectorAll(".warnbar.bad")].forEach(w => {
+        if (!/chỉ được điền thông tin khi khách ở/.test(w.textContent || "")) return;
+        const d = el("div", "sub");
+        d.style.cssText = "margin:6px 0";
+        d.innerHTML = "🔒 Khách đã ở <b>Bỏ (L9)</b> — Sales và CSKH không sửa được nữa. "
+          + "Cần sửa thì báo Quản lý.";
+        w.parentNode.replaceChild(d, w);
+      });
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* màn Dữ liệu Marketing với Sales/CSKH: khoá im, không hiện dải nào */
+(function () {
+  if (typeof khoaManMkt !== "function") return;
+  const goc = khoaManMkt;
+  khoaManMkt = function () {
+    const r = goc.apply(this, arguments);
+    try {
+      const v = document.getElementById("view"); if (!v) return r;
+      [...v.querySelectorAll(".warnbar.bad")].forEach(w => {
+        if (/Chỉ Marketing và Ban điều hành điền được chi phí/.test(w.textContent || "")) w.remove();
+      });
+    } catch (e) { }
+    return r;
+  };
+})();
 </script></body></html>
