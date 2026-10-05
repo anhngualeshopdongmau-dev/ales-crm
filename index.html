@@ -490,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v117.0 · 03/10/2026";
+window.ALES_BAN = "v119.0 · 03/10/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -38868,5 +38868,431 @@ async function phieuSoatNgay() {
     } catch (e) { }
     return r;
   };
+})();
+/* ============ v118 — HỎI THẲNG KHO: HỎNG Ở ĐÂU, HỎNG TỪ NGÀY NÀO ============
+   Hai việc đang lẫn vào nhau, phải tách ra mới chữa được:
+
+   A. Máy bạn Hùng vào không được kho. Dải vàng chỉ nói "không nối được" chứ
+      chưa nói VÌ SAO. Có ba nguyên nhân, cách chữa khác hẳn nhau:
+        1. Tài khoản của bạn ấy CHƯA CÓ TRÊN KHO → Ban điều hành vào Nhân sự &
+           tài khoản bấm Lưu ở dòng đó. Đăng nhập lại bao nhiêu lần cũng vô ích.
+        2. Tài khoản có trên kho, chỉ PHIẾU VÀO CỬA hỏng → đăng nhập lại là xong.
+        3. Kho hỏng hẳn: Apps Script bản cũ, sai quyền, sai đường dẫn → việc của
+           Ban điều hành.
+      Bản này thêm nút "🔎 Hỏi kho giúp tôi" ngay trong dải vàng — ai thấy dải
+      đó cũng bấm được — web hỏi kho rồi nói thẳng rơi vào trường hợp nào, kèm
+      nguyên văn câu kho trả lời để chụp gửi đi.
+
+   B. Chị bảo "data pancake từ 25/9 không cập nhật". Cái này KHÔNG phải do phiếu
+      của bạn Hùng — phiếu hỏng thì chỉ máy bạn ấy không thấy số, chứ kho vẫn
+      đầy số. Số trên kho dừng từ 25/9 nghĩa là CHÍNH VIỆC GOOGLE TỰ LẤY SỐ đã
+      chết từ hôm đó. Bản này thêm "🔎 Soát lịch lấy số" trong ⚙ Cài đặt lấy số:
+      nói rõ số mới nhất là ngày nào, dừng bao nhiêu ngày rồi, lịch nền còn bật
+      không, và phải làm gì.
+   ====================================================================== */
+
+var V118 = { daTuHoi: 0 };
+
+/* hỏi kho bằng fetch trần: không qua lớp bọc, để không bị đá ra màn đăng nhập
+   giữa chừng và để đọc được đúng nguyên văn kho trả về */
+async function khoHoiTran(than) {
+  if (!KHO || !KHO.url) return { loi: "Máy này chưa khai đường dẫn kho." };
+  try {
+    const r = await fetch(KHO.url, {
+      method: "POST", redirect: "follow",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(than)
+    });
+    const chu = await r.text();
+    if (/^\s*</.test(chu)) return { web: 1, tho: chu.slice(0, 300) };
+    try { return { j: JSON.parse(chu), tho: chu.slice(0, 300) }; }
+    catch (e) { return { khongJSON: 1, tho: chu.slice(0, 300) }; }
+  } catch (e) { return { mang: 1, tho: String(e.message || e) }; }
+}
+
+async function khoChanDoanTK(uidVao) {
+  const uid = uidVao || (KHO && KHO.uid) || S.me || "";
+  let ten = uid;
+  try { ten = (userOf(uid) || {}).name || uid; } catch (e) { }
+  const ds = await khoHoiTran({ fn: "danhsachtk" });
+
+  if (ds.loi) return { m: "mang", chu: ds.loi, tho: "" };
+  if (ds.mang) return { m: "mang", chu: "Không gọi tới được kho — mạng hoặc đường dẫn kho sai.", tho: ds.tho };
+  if (ds.web) return {
+    m: "quyen", chu: "Kho trả về một trang web thay vì dữ liệu — bản triển khai Apps Script "
+      + "đang để sai quyền truy cập, hoặc đường dẫn đã cũ.", tho: ds.tho
+  };
+  if (ds.khongJSON) return { m: "cu", chu: "Kho trả lời không phải dữ liệu — gần như chắc chắn Apps Script là BẢN CŨ.", tho: ds.tho };
+  const j = ds.j || {};
+  if (j.loi || j.ds === undefined)
+    return { m: "cu", chu: "Kho không hiểu lệnh lấy danh sách tài khoản — Apps Script là BẢN CŨ.", tho: ds.tho };
+
+  const tren = (j.ds || []).some(x => String(x && x.uid) === String(uid));
+  if (!tren) return {
+    m: "chuacokho", uid, ten, so: (j.ds || []).length,
+    chu: "Kho nối được bình thường, nhưng TÀI KHOẢN NÀY CHƯA CÓ TRÊN KHO.", tho: ds.tho
+  };
+  return {
+    m: "phieu", uid, ten, so: (j.ds || []).length,
+    chu: "Tài khoản này CÓ trên kho — hỏng ở phiếu vào cửa thôi.", tho: ds.tho
+  };
+}
+
+/* ---------- nút trong dải vàng ---------- */
+function khoThemNutHoi() {
+  const w = document.getElementById("pcMatKho"); if (!w || w._v118) return;
+  w._v118 = 1;
+  const b = el("button", "btn sm", "🔎 Hỏi kho giúp tôi");
+  b.style.cssText = "margin:6px 0 0 8px";
+  b.title = "Web hỏi kho và nói thẳng hỏng ở đâu";
+  const kq = el("div"); kq.style.marginTop = "8px";
+  b.onclick = async () => {
+    b.disabled = true; const t = b.textContent; b.textContent = "Đang hỏi kho…";
+    kq.innerHTML = "";
+    try {
+      const d = await khoChanDoanTK();
+      kq.innerHTML = ""; kq.appendChild(khoVeChanDoan(d));
+    } finally { b.disabled = false; b.textContent = t; }
+  };
+  w.appendChild(b); w.appendChild(kq);
+  /* hỏi luôn một lần cho khỏi phải bấm — chỉ một lần mỗi lần mở web */
+  if (!V118.daTuHoi) { V118.daTuHoi = 1; setTimeout(() => { try { b.onclick(); } catch (e) { } }, 500); }
+}
+
+function khoVeChanDoan(d) {
+  const box = el("div");
+  box.style.cssText = "margin-top:8px;padding:10px 12px;border-radius:10px;background:var(--panel);"
+    + "border:1px solid var(--border)";
+  let s = "<b>" + esc(d.chu) + "</b><br>";
+  if (d.m === "chuacokho") {
+    s += "Tài khoản <b>" + esc(d.ten) + "</b> (mã <b>" + esc(d.uid) + "</b>) không nằm trong "
+      + d.so + " tài khoản trên kho.<br>"
+      + "👉 <b>Đăng nhập lại bao nhiêu lần cũng không được.</b> Nhờ <b>Ban điều hành</b> vào "
+      + "<b>Dữ liệu tài khoản → 👥 Nhân sự &amp; tài khoản</b>, gõ tên bạn vào ô tìm, "
+      + "thấy nhãn đỏ <b>“chưa lên kho”</b> thì bấm <b>Lưu</b> ở dòng đó. Xong rồi đăng nhập lại.";
+  } else if (d.m === "phieu") {
+    s += "Tài khoản <b>" + esc(d.ten) + "</b> (mã <b>" + esc(d.uid) + "</b>) có trong "
+      + d.so + " tài khoản trên kho.<br>"
+      + "👉 Bấm <b>Đăng xuất rồi đăng nhập lại</b> ở trên là xong.";
+  } else if (d.m === "cu") {
+    s += "👉 Việc của <b>Ban điều hành</b>: vào Trang tính → Tiện ích mở rộng → Apps Script → "
+      + "<b>Triển khai → Quản lý các bản triển khai → ✏️ → Phiên bản mới → Triển khai</b>.";
+  } else if (d.m === "quyen") {
+    s += "👉 Việc của <b>Ban điều hành</b>: lúc Triển khai phải chọn "
+      + "<b>Ai có quyền truy cập = Bất kỳ ai</b>, và đường dẫn phải là đuôi <b>/exec</b>.";
+  } else {
+    s += "👉 Kiểm tra mạng của máy này, rồi báo Ban điều hành xem đường dẫn kho còn đúng không.";
+  }
+  s += '<div class="sub" style="margin-top:8px"><b>Nguyên văn kho trả lời</b> (chụp phần này gửi đi):'
+    + '<div style="font-family:ui-monospace,monospace;white-space:pre-wrap;word-break:break-all;'
+    + 'background:var(--plane);padding:6px;border-radius:6px;margin-top:4px">'
+    + esc(String(d.tho || "").slice(0, 400)) + "</div></div>";
+  box.innerHTML = s;
+  return box;
+}
+
+(function () {
+  if (typeof pcDaiMatKho !== "function") return;
+  const goc = pcDaiMatKho;
+  pcDaiMatKho = function (v) {
+    const r = goc.apply(this, arguments);
+    try { khoThemNutHoi(); } catch (e) { }
+    return r;
+  };
+})();
+
+/* ================= B. SỐ PANCAKE DỪNG TỪ NGÀY NÀO ================= */
+
+function v118Ngay(n) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(n || ""));
+  return m ? m[3] + "/" + m[2] + "/" + m[1] : String(n || "");
+}
+function pcHopTin() {
+  try { if (typeof idbHopInbox === "function") return idbHopInbox(); } catch (e) { }
+  try { if (Array.isArray(INBOX)) return INBOX; } catch (e) { }
+  return [];
+}
+function pcNgayMoiNhatMay() {
+  let x = "";
+  pcHopTin().forEach(k => { const n = String(k && k.at || ""); if (n > x) x = n; });
+  return x;
+}
+function pcCachBaoNhieuNgay(n) {
+  if (!n) return null;
+  const a = new Date(n + "T00:00:00"), b = new Date(iso(TODAY) + "T00:00:00");
+  if (isNaN(a)) return null;
+  return Math.round((b - a) / 86400000);
+}
+
+async function pcSoatLich() {
+  const ra = { moiNhat: pcNgayMoiNhatMay(), soTren: 0 };
+  ra.cach = pcCachBaoNhieuNgay(ra.moiNhat);
+  ra.soTren = pcHopTin().length;
+  const d = await khoHoiTran({ fn: "pctrangthai", khoa: (KHO && KHO.khoaQT) || "", token: (KHO && KHO.token) || "" });
+  ra.tho = d.tho || "";
+  if (d.loi) { ra.m = "mang"; ra.chu = d.loi; return ra; }
+  if (d.mang) { ra.m = "mang"; ra.chu = "Không gọi tới được kho."; return ra; }
+  if (d.web || d.khongJSON) { ra.m = "cu"; ra.chu = "Kho trả về trang web / không phải dữ liệu."; return ra; }
+  const j = d.j || {};
+  if (j.loi) { ra.m = "quyen"; ra.chu = String(j.loi); return ra; }
+  if (j.ds === undefined) { ra.m = "cu"; ra.chu = "Kho không hiểu lệnh này — Apps Script là BẢN CŨ."; return ra; }
+  ra.lich = j.lich ? 1 : 0;
+  ra.page = (j.ds || []).length;
+  ra.m = ra.lich ? "chay" : "tat";
+  return ra;
+}
+
+function pcVeSoatLich(r) {
+  const box = el("div");
+  box.style.cssText = "margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--panel);"
+    + "border:1px solid var(--border)";
+  let s = "";
+
+  /* 1. số mới nhất là ngày nào */
+  if (!r.moiNhat) {
+    s += "<b>Máy này chưa có data Pancake nào.</b><br>";
+  } else {
+    const dung = r.cach !== null && r.cach >= 2;
+    s += "Data Pancake mới nhất trên máy này: <b>" + esc(v118Ngay(r.moiNhat)) + "</b>"
+      + (r.cach !== null ? " — cách đây <b>" + r.cach + " ngày</b>" : "")
+      + " · tổng <b>" + r.soTren + "</b> tin.<br>";
+    if (dung) s += '<div class="warn" style="margin:6px 0"><b>⚠ Số đã DỪNG từ '
+      + esc(v118Ngay(r.moiNhat)) + ".</b> Việc Google tự lấy số từ Pancake không chạy nữa — "
+      + "chuyện này không liên quan gì tới phiếu đăng nhập của nhân viên.</div>";
+  }
+
+  /* 2. lịch nền */
+  if (r.m === "chay") {
+    s += '<span class="chip ok">Lịch chạy nền ĐANG BẬT</span> · ' + r.page + " page có token trên kho.<br>";
+    if (r.cach !== null && r.cach >= 2) {
+      s += "Lịch bật mà số vẫn dừng thì gần như chắc chắn là <b>TOKEN PANCAKE ĐÃ HẾT HẠN</b> "
+        + "(token Pancake chỉ sống một thời gian rồi chết).<br>"
+        + "👉 Bấm <b>⟳ Lấy số ngay</b> ở trên. Nếu hiện <b>“page lỗi”</b> thì đúng là token chết: "
+        + "vào <b>🔗 Kết nối Pancake</b> lấy token mới của từng page rồi dán lại, xong bấm "
+        + "<b>☁ Bật Google chạy nền</b> một lần.";
+    }
+  } else if (r.m === "tat") {
+    s += '<span class="chip bad">Lịch chạy nền ĐANG TẮT</span>'
+      + (r.page ? " · " + r.page + " page có token trên kho" : " · kho chưa có token page nào")
+      + ".<br>👉 Đây chính là lý do số dừng. Bấm <b>☁ Bật Google chạy nền</b> ở trên "
+      + "(nút này chỉ Ban điều hành bấm được, vì cần khoá quản trị).";
+  } else if (r.m === "cu") {
+    s += '<span class="chip dg">Kho đang chạy Apps Script BẢN CŨ</span><br>'
+      + "👉 Vào Trang tính → Tiện ích mở rộng → Apps Script → <b>Triển khai → Quản lý các bản "
+      + "triển khai → ✏️ → Phiên bản mới → Triển khai</b>.";
+  } else if (r.m === "quyen") {
+    s += '<span class="chip bad">Kho chối: ' + esc(r.chu) + "</span><br>"
+      + "👉 Mở mục này trên <b>máy của Ban điều hành</b> (máy có dán khoá quản trị) rồi soát lại.";
+  } else {
+    s += '<span class="chip bad">Không hỏi được kho</span> — ' + esc(r.chu || "") + "<br>"
+      + "👉 Kiểm tra mạng và đường dẫn kho trong ☁ Kho dữ liệu chung.";
+  }
+
+  s += '<div class="sub" style="margin-top:8px"><b>Nguyên văn kho trả lời</b> (chụp phần này gửi đi):'
+    + '<div style="font-family:ui-monospace,monospace;white-space:pre-wrap;word-break:break-all;'
+    + 'background:var(--plane);padding:6px;border-radius:6px;margin-top:4px">'
+    + esc(String(r.tho || "").slice(0, 400)) + "</div></div>";
+  box.innerHTML = s;
+  return box;
+}
+
+/* gắn vào ⚙ Cài đặt lấy số */
+(function () {
+  if (typeof pcManCaiDat !== "function") return;
+  const goc = pcManCaiDat;
+  pcManCaiDat = function () {
+    const r = goc.apply(this, arguments);
+    try {
+      const b = document.querySelector("#cotwrap .cot-b"); if (!b || b._v118) return r;
+      b._v118 = 1;
+      const hang = el("div", "row"); hang.style.cssText = "gap:8px;margin-top:12px";
+      const nut = el("button", "btn", "🔎 Soát lịch lấy số");
+      nut.title = "Nói rõ số dừng từ ngày nào và vì sao";
+      const kq = el("div");
+      nut.onclick = async () => {
+        nut.disabled = true; const t = nut.textContent; nut.textContent = "Đang soát…";
+        kq.innerHTML = "";
+        try { kq.appendChild(pcVeSoatLich(await pcSoatLich())); }
+        finally { nut.disabled = false; nut.textContent = t; }
+      };
+      hang.appendChild(nut); b.appendChild(hang); b.appendChild(kq);
+      /* soát luôn, khỏi phải bấm */
+      setTimeout(() => { try { nut.onclick(); } catch (e) { } }, 300);
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* dòng cảnh báo gọn trên màn Data từ Pancake khi số đã dừng từ lâu */
+(function () {
+  if (typeof adsThanhPancake !== "function") return;
+  const goc = adsThanhPancake;
+  adsThanhPancake = function (v) {
+    const r = goc.apply(this, arguments);
+    try {
+      if (typeof pcAiLay === "function" && !pcAiLay()) return r;
+      if (document.getElementById("pcDung")) return r;
+      /* đang mất kho thì số cũ là do không nối được, đừng kết luận là lịch chết:
+         dải đỏ mất kho đã nói rồi, thêm dải nữa chỉ rối */
+      if (document.getElementById("pcMatKho")) return r;
+      const n = pcNgayMoiNhatMay(), c = pcCachBaoNhieuNgay(n);
+      if (!n || c === null || c < 2) return r;
+      const w = el("div", "warnbar wn"); w.id = "pcDung";
+      w.innerHTML = "<div><b>Số Pancake mới nhất là ngày " + esc(v118Ngay(n))
+        + " — đã dừng " + c + " ngày.</b> Việc Google tự lấy số đang không chạy. "
+        + "Mở <b>⚙ Cài đặt lấy số → 🔎 Soát lịch lấy số</b> để biết vì sao.</div>";
+      v.insertBefore(w, v.firstChild);
+    } catch (e) { }
+    return r;
+  };
+})();
+/* ============ v119 — "MẬT KHẨU CHƯA ĐÚNG" PHẢI NÓI RÕ CHƯA ĐÚNG Ở ĐÂU ============
+   Chị gõ đúng mật khẩu Ban giám đốc mà màn đăng nhập vẫn đỏ "Mật khẩu chưa đúng".
+   Câu đó đang gộp BỐN chuyện khác hẳn nhau vào một:
+
+     1. Kho CÓ tài khoản này, nhưng mật khẩu trên kho vẫn là MẬT KHẨU CŨ —
+        tức là lệnh "Đặt lại mật khẩu hàng loạt" chưa chạy xong cho người này.
+     2. Tài khoản này CHƯA CÓ TRÊN KHO — gõ mật khẩu gì cũng chối.
+     3. Kho đang chạy Apps Script BẢN CŨ / sai quyền triển khai → chối tất cả.
+     4. Mất mạng.
+
+   Bản này: đăng nhập hỏng thì web TỰ HỎI KHO ngay tại màn đăng nhập rồi nói
+   thẳng rơi vào trường hợp nào và phải làm gì — kèm nguyên văn kho trả lời.
+   Riêng Ban điều hành còn được nhắc: gõ KHOÁ QUẢN TRỊ vào chính ô mật khẩu này
+   là vào thẳng được, không phải chờ ai.
+   ====================================================================== */
+
+function lgKhungKQ() {
+  let k = document.getElementById("lgChanDoan");
+  if (!k) {
+    k = el("div"); k.id = "lgChanDoan";
+    k.style.cssText = "margin-top:10px;padding:10px 12px;border-radius:10px;"
+      + "background:var(--panel);border:1px solid var(--border);font-size:13.5px;text-align:left";
+    const n = document.getElementById("lgBtn");
+    if (n && n.parentNode) n.parentNode.insertBefore(k, n.nextSibling);
+  }
+  k.style.display = "block";
+  return k;
+}
+
+function lgLoiDangHien() {
+  const m = document.getElementById("lgMsg");
+  if (!m || m.style.display === "none") return "";
+  const t = String(m.textContent || "").trim();
+  if (!t) return "";
+  if (/^Vào bằng |^Đang kiểm tra/i.test(t)) return "";      /* mấy câu này là vào được rồi */
+  return t;
+}
+
+async function lgSoatLoi(loiCu) {
+  const w = document.getElementById("login");
+  if (!w || w.style.display === "none") return;               /* vào được rồi thì thôi */
+  const loi = loiCu || lgLoiDangHien();
+  if (!loi) return;
+  const usel = document.getElementById("lgUser");
+  const uid = usel ? usel.value : "";
+  const k = lgKhungKQ();
+  k.innerHTML = "Đang hỏi kho xem vướng ở đâu…";
+  let d;
+  try { d = await khoChanDoanTK(uid); }
+  catch (e) { k.innerHTML = "Không hỏi được kho: " + esc(String(e.message || e)); return; }
+  k.innerHTML = "";
+  k.appendChild(lgVeChanDoan(d, loi));
+}
+
+function lgVeChanDoan(d, loi) {
+  const box = el("div");
+  let s = "";
+  const mk = /mật khẩu|mat khau|password/i.test(String(loi || ""));
+
+  if (d.m === "phieu") {
+    /* kho có tài khoản này mà vẫn chối → đúng là mật khẩu trên kho khác */
+    s += "<b>Tài khoản này CÓ trên kho, nhưng kho không nhận mật khẩu vừa gõ.</b><br>"
+      + "Nghĩa là <b>mật khẩu trên kho vẫn là mật khẩu cũ</b> — lệnh "
+      + "<b>Đặt lại mật khẩu hàng loạt</b> chưa chạy tới tài khoản này.<br>"
+      + "👉 <b>Ban điều hành vào ngay được:</b> gõ <b>khoá quản trị</b> vào chính ô mật khẩu "
+      + "ở trên (không phải mật khẩu nhân viên) rồi bấm Đăng nhập. Vào xong mở "
+      + "<b>Dữ liệu tài khoản → 🔑 Đặt lại mật khẩu hàng loạt</b>, chạy một lần. "
+      + "Từ lúc đó mật khẩu mới mới dùng được.";
+  } else if (d.m === "chuacokho") {
+    s += "<b>Tài khoản này CHƯA CÓ TRÊN KHO</b> — kho đang giữ " + d.so + " tài khoản, "
+      + "không có tài khoản vừa chọn.<br>"
+      + "👉 Gõ mật khẩu nào cũng sẽ bị chối. <b>Ban điều hành</b> gõ <b>khoá quản trị</b> vào ô "
+      + "mật khẩu ở trên để vào, rồi mở <b>👥 Nhân sự &amp; tài khoản</b>, tìm tên này, "
+      + "bấm <b>Lưu</b> ở dòng đó để đẩy lên kho.";
+  } else if (d.m === "cu") {
+    s += "<b>Kho đang chạy Apps Script BẢN CŨ</b> nên chối mọi lần đăng nhập — không phải "
+      + "lỗi mật khẩu.<br>"
+      + "👉 Vào Trang tính → Tiện ích mở rộng → Apps Script → <b>Triển khai → Quản lý các bản "
+      + "triển khai → ✏️ → Phiên bản mới → Triển khai</b>.";
+  } else if (d.m === "quyen") {
+    s += "<b>Kho trả về một trang web thay vì dữ liệu</b> — bản triển khai đang sai quyền "
+      + "truy cập, hoặc đường dẫn đã cũ. Không phải lỗi mật khẩu.<br>"
+      + "👉 Lúc Triển khai phải chọn <b>Ai có quyền truy cập = Bất kỳ ai</b>, đường dẫn "
+      + "phải là đuôi <b>/exec</b>.";
+  } else {
+    s += "<b>Máy này không gọi tới được kho</b> — mạng hoặc đường dẫn kho sai. "
+      + "Không phải lỗi mật khẩu.<br>👉 Kiểm tra mạng rồi thử lại.";
+  }
+
+  if (mk && d.m !== "phieu" && d.m !== "chuacokho")
+    s += '<div class="sub" style="margin-top:6px">Web báo “' + esc(loi)
+      + "” là câu mặc định, không có nghĩa mật khẩu sai thật.</div>";
+
+  s += '<div class="sub" style="margin-top:8px"><b>Nguyên văn kho trả lời</b> (chụp phần này gửi đi):'
+    + '<div style="font-family:ui-monospace,monospace;white-space:pre-wrap;word-break:break-all;'
+    + 'background:var(--plane);padding:6px;border-radius:6px;margin-top:4px">'
+    + esc(String(d.tho || "").slice(0, 400)) + "</div></div>";
+  box.innerHTML = s;
+  return box;
+}
+
+/* bọc nút Đăng nhập: hỏng là soát ngay, khỏi phải bấm thêm gì */
+function lgGanSoat() {
+  const nut = document.getElementById("lgBtn"); if (!nut) return;
+  const goc = nut.onclick;
+  if (!goc || goc._v119) return;
+  const boc = async function (e) {
+    const k = document.getElementById("lgChanDoan"); if (k) k.style.display = "none";
+    const r = await goc.call(this, e);
+    setTimeout(() => { try { lgSoatLoi(); } catch (x) { } }, 60);
+    return r;
+  };
+  boc._v119 = 1;
+  nut.onclick = boc;
+}
+(function () {
+  if (typeof loginScreen !== "function") return;
+  const goc = loginScreen;
+  loginScreen = function () {
+    const r = goc.apply(this, arguments);
+    try {
+      const k = document.getElementById("lgChanDoan"); if (k) k.style.display = "none";
+      lgGanSoat();
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* nhắc sẵn một dòng nhỏ cho Ban điều hành.
+   Không viết vào #lgHint: v74 và v102 đều đặt lại chữ trong ô đó sau khi màn vẽ
+   xong, viết vào đấy là mất. Dựng một dòng riêng cho chắc. */
+function lgNhacQT() {
+  const h = document.getElementById("lgHint"); if (!h) return;
+  if (document.getElementById("lgQTnhac")) return;
+  const d = el("div", "", "");
+  d.id = "lgQTnhac";
+  d.style.cssText = "font-size:11.5px;color:var(--muted);margin-top:6px";
+  d.innerHTML = "Ban điều hành: gõ <b>khoá quản trị</b> vào chính ô mật khẩu này là vào thẳng, "
+    + "kể cả khi mật khẩu nhân viên chưa đặt lại.";
+  h.parentNode.insertBefore(d, h.nextSibling);
+}
+(function () {
+  ["loginScreen", "loginThemMat"].forEach(ten => {
+    if (typeof window[ten] !== "function") return;
+    const goc = window[ten];
+    window[ten] = function () { const r = goc.apply(this, arguments); try { lgNhacQT(); } catch (e) { } return r; };
+  });
+  try { lgNhacQT(); } catch (e) { }
 })();
 </script></body></html>
