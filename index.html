@@ -490,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v131.0 · 05/10/2026";
+window.ALES_BAN = "v132.0 · 05/10/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -40835,6 +40835,117 @@ function nkVeDong(thieu) {
       const thieu = DK_BANG.filter(k => (DK.kho[k] || 0) > (DK.may[k] || 0));
       if (thieu.length && NK.lan.length) nkVeDong(thieu);
     } catch (e) { }
+    return r;
+  };
+})();
+/* ============ v132 — TRANGTHAI THÌ ĐƯỢC, TAI THÌ BỊ CHỐI ============
+   Trên cùng một màn hình của bạn Yến có hai câu đá nhau:
+     · Khung chẩn đoán: "Kho nhận phiếu bình thường",
+       trangthai+phiếu → {"ok":1, ... "inbox":965}      ← kho TRẢ LỜI ĐƯỢC
+     · Chip đỏ trên thanh: "Chưa đăng nhập hoặc phiên đã hết hạn"
+
+   Hai câu đó cùng đúng, vì chúng nói về HAI LỆNH KHÁC NHAU:
+     · "trangthai" (hỏi kho đang có bao nhiêu) → kho cho qua bằng phiếu.
+     · "tai"       (xin dữ liệu về)            → kho CHỐI.
+   Chip đỏ chính là lời kho trả lời cho lệnh "tai".
+
+   Nghĩa là kho đang đòi KHOÁ QUẢN TRỊ mới cho tải dữ liệu. Máy chị có khoá nên
+   đủ; máy nhân viên chỉ có phiếu nên không bao giờ kéo được gì — đúng mọi thứ
+   chị thấy suốt hôm nay.
+
+   Bản này hỏi kho đúng hai câu đó cạnh nhau rồi in nguyên văn, để kết luận không
+   còn là phỏng đoán. Nếu đúng mẫu trên, việc phải làm nằm ở Apps Script, không
+   phải ở web — và dòng chẩn đoán sẽ nói thẳng như vậy.
+   ====================================================================== */
+
+var TT = { trangthai: "", tai: "", ketLuan: "" };
+
+async function ttHoiTran(duoi) {
+  if (!KHO || !KHO.url) return "chưa khai đường dẫn kho";
+  try {
+    const u = KHO.url + (KHO.url.indexOf("?") < 0 ? "?" : "&")
+      + (KHO.khoaQT ? "khoa=" + encodeURIComponent(KHO.khoaQT) + "&" : "")
+      + "token=" + encodeURIComponent(KHO.token || "") + "&" + duoi;
+    const r = await fetch(u, { method: "GET", redirect: "follow" });
+    const chu = await r.text();
+    return String(chu).slice(0, 220);
+  } catch (e) { return "không gọi tới được kho: " + (e.message || e); }
+}
+
+async function ttSoatHaiLenh() {
+  TT.trangthai = await ttHoiTran("fn=trangthai");
+  TT.tai = await ttHoiTran("fn=tai&tu=" + encodeURIComponent("{}"));
+  const ttOk = /"ok"\s*:\s*1/.test(TT.trangthai) && !/"loi"/.test(TT.trangthai);
+  const taiLoi = /"loi"/.test(TT.tai);
+  const taiQuyen = /đăng nhập|dang nhap|hết hạn|het han|khoá|khoa quan tri|quyền|quyen/i.test(TT.tai);
+  if (ttOk && taiLoi && taiQuyen) TT.ketLuan = "kho-doi-khoa";
+  else if (ttOk && !taiLoi) TT.ketLuan = "kho-cho-tai";
+  else TT.ketLuan = "khac";
+  return TT;
+}
+
+function ttVeDong() {
+  const cu = document.getElementById("ttDong"); if (cu) cu.remove();
+  if (!TT.ketLuan) return;
+  const v = document.getElementById("view"); if (!v) return;
+  const d = el("div", TT.ketLuan === "kho-doi-khoa" ? "warnbar bad" : "warnbar wn");
+  d.id = "ttDong";
+  let s = "";
+  if (TT.ketLuan === "kho-doi-khoa") {
+    s = "<div><b>Tìm ra rồi: kho CHO hỏi nhưng KHÔNG CHO tải.</b><br>"
+      + "Lệnh <b>trangthai</b> (hỏi kho có bao nhiêu) thì kho trả lời bình thường, "
+      + "nhưng lệnh <b>tai</b> (xin dữ liệu về) thì kho chối. Tức là kho đang bắt buộc "
+      + "phải có <b>khoá quản trị</b> mới cho tải — máy nhân viên chỉ có phiếu nên không "
+      + "bao giờ kéo được gì.<br>"
+      + "👉 Việc này <b>phải sửa trong Apps Script của kho</b>, không bản web nào chữa được. "
+      + "Chụp dòng dưới gửi quản trị.</div>";
+  } else if (TT.ketLuan === "kho-cho-tai") {
+    s = "<div><b>Kho cho tải bình thường.</b> Nếu màn vẫn thiếu số thì hỏng ở chỗ khác — "
+      + "chụp dòng dưới gửi quản trị.</div>";
+  } else {
+    s = "<div><b>Kho trả lời bất thường.</b> Chụp dòng dưới gửi quản trị.</div>";
+  }
+  s += '<div style="font-family:ui-monospace,monospace;font-size:11.5px;white-space:pre-wrap;'
+    + 'word-break:break-all;background:var(--plane);padding:6px;border-radius:6px;margin-top:6px">'
+    + esc("tài khoản " + ((KHO && KHO.uid) || S.me || "?")
+      + " · vai " + (typeof myRole === "function" ? myRole() : "?")
+      + " · khoá quản trị trong máy: " + ((KHO && KHO.khoaQT) ? "CÓ" : "không")
+      + "\n\ntrangthai → " + TT.trangthai
+      + "\n\ntai → " + TT.tai)
+    + "</div>";
+  d.innerHTML = s;
+  v.insertBefore(d, v.firstChild);
+}
+
+/* chạy khi máy vẫn thiếu sau khi đã cố kéo */
+(function () {
+  if (typeof dboChoBangKho !== "function") return;
+  const goc = dboChoBangKho;
+  dboChoBangKho = async function () {
+    const r = await goc.apply(this, arguments);
+    try {
+      const thieu = (DK.kho && DK.may) ? DK_BANG.filter(k => (DK.kho[k] || 0) > (DK.may[k] || 0)) : [];
+      if (!thieu.length) { TT.ketLuan = ""; ttVeDong(); return r; }
+      await ttSoatHaiLenh();
+      ttVeDong();
+      /* kho chối lệnh tải vì quyền thì đừng doạ "chưa đăng nhập" nữa — sai bệnh */
+      if (TT.ketLuan === "kho-doi-khoa") {
+        khoLoi = "Kho không cho tài khoản này tải dữ liệu";
+        try { khoVeTrangThai(); } catch (e) { }
+        const w = document.getElementById("pcMatKho"); if (w) w.remove();
+      }
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* vẽ lại màn thì giữ dòng kết luận */
+(function () {
+  if (typeof render !== "function") return;
+  const goc = render;
+  render = function () {
+    const r = goc.apply(this, arguments);
+    try { if (TT.ketLuan) ttVeDong(); } catch (e) { }
     return r;
   };
 })();
