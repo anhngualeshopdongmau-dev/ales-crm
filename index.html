@@ -490,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v135.0 · 06/10/2026";
+window.ALES_BAN = "v139.0 · 06/10/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -41169,4 +41169,590 @@ function tzSuaHet(imLang) {
 
 /* và sửa một lượt ngay khi mở web */
 setTimeout(() => { try { tzSuaHet(1); } catch (e) { } }, 4000);
+/* ============ v136 — CHỌN MỐC THỜI GIAN VÀ TẢI DS PANCAKE VỀ ============
+   Chị cần: trên màn Data từ Pancake có ô chọn mốc thời gian (như bên Dữ liệu
+   Sales) và một nút tải danh sách về theo đúng khoảng ngày đang chọn.
+
+   Bản này CHỈ THÊM, không sửa gì của phần cũ:
+     · Hàng lọc nhanh "Số về ngày: Tất cả / Hôm nay / Hôm qua / Cũ hơn" — GIỮ
+       NGUYÊN, không đụng tới.
+     · Thêm một hàng nữa ngay dưới: Từ ngày — Đến ngày, kèm mấy nút nhanh
+       (Hôm nay · 7 ngày · Tháng này · Tháng trước · Bỏ mốc).
+     · Thêm nút ⬇ Tải danh sách (CSV) — tải đúng những dòng đang hiện.
+   Cách làm: BỌC hai hàm cũ (mktTomTatNgay, mktLocNgay) chứ không viết đè, nên
+   mọi thứ đã chạy trước đó vẫn chạy y như cũ.
+
+   Quyền tải vẫn theo luật cũ: chỉ Ban điều hành và Kế toán (v64).
+   ====================================================================== */
+
+/* ---------- 1. lọc thêm theo khoảng ngày, sau khi hàm cũ đã lọc xong ---------- */
+(function () {
+  if (typeof mktLocNgay !== "function") return;
+  const goc = mktLocNgay;
+  mktLocNgay = function (list) {
+    let ra = goc.apply(this, arguments);
+    try {
+      const tu = S.mktTu || "", den = S.mktDen || "";
+      if (!tu && !den) return ra;
+      ra = (ra || []).filter(x => {
+        const n = String((x && x.at) || "");
+        if (!n) return false;
+        if (tu && n < tu) return false;
+        if (den && n > den) return false;
+        return true;
+      });
+    } catch (e) { }
+    return ra;
+  };
+})();
+
+/* ---------- 2. dựng dòng CSV từ một tin Pancake ---------- */
+function pcDongCSV(x, i) {
+  const an = f => { try { return f(); } catch (e) { return ""; } };
+  const P = an(() => pageOf(x.page)) || {};
+  const d = an(() => pcTrung(x.phone));
+  return [
+    i + 1,
+    an(() => fmtD(x.at || "")) || (x.at || ""),
+    x.gio || "",
+    x.name || "",
+    x.phone || "",
+    P.mkt || "",
+    an(() => mangOf(P.mang).name) || "",
+    an(() => pcTinh(x)) || "",
+    x.status === "tha" ? "Đã chia" : "Chờ chia",
+    x.assign ? (an(() => userOf(x.assign).name) || x.assign) : "",
+    d ? "Trùng" : "Số mới",
+    x.adId || "",
+    String(x.raw || "").replace(/\s+/g, " ").slice(0, 300)
+  ];
+}
+const PC_CSV_DAU = ["STT", "Ngày", "Giờ", "Tên khách", "SĐT", "Page", "Mảng", "Tỉnh",
+  "Trạng thái", "Giao cho", "Check trùng", "Mã quảng cáo", "Nội dung chat"];
+
+function pcTaiCSV(list, tu, den) {
+  const o = x => `"${String(x == null ? "" : x).replace(/"/g, '""')}"`;
+  const csv = "﻿" + [PC_CSV_DAU].concat((list || []).map(pcDongCSV))
+    .map(r => r.map(o).join(",")).join("\n");
+  const a = el("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = "ALES-Pancake-" + (tu || "tatca") + "_" + (den || "tatca") + ".csv";
+  a.click();
+  try { setTimeout(() => URL.revokeObjectURL(a.href), 4000); } catch (e) { }
+}
+
+/* ---------- 3. hàng chọn mốc thời gian + nút tải ---------- */
+function pcHangMocTG(v, list0) {
+  const hang = el("div", "row");
+  hang.id = "pcMocTG";
+  hang.style.cssText = "gap:6px;align-items:center;padding:8px 10px;"
+    + "border-bottom:1px solid var(--border);flex-wrap:wrap";
+
+  hang.appendChild(el("span", "sub", "Mốc thời gian:"));
+  const iTu = el("input"); iTu.type = "date"; iTu.value = S.mktTu || "";
+  const iDen = el("input"); iDen.type = "date"; iDen.value = S.mktDen || "";
+  iTu.style.maxWidth = iDen.style.maxWidth = "160px";
+  const dat = (tu, den) => {
+    S.mktTu = tu || ""; S.mktDen = den || "";
+    if (S.mktTu || S.mktDen) S.mktNgay = "";   /* tránh hai bộ lọc đá nhau */
+    render();
+  };
+  iTu.onchange = () => dat(iTu.value, S.mktDen);
+  iDen.onchange = () => dat(S.mktTu, iDen.value);
+  hang.appendChild(iTu);
+  hang.appendChild(el("span", "sub", "→"));
+  hang.appendChild(iDen);
+
+  const nay = iso(TODAY);
+  const d1 = iso(new Date(TODAY.getFullYear(), TODAY.getMonth(), 1));
+  const t0 = new Date(TODAY.getFullYear(), TODAY.getMonth() - 1, 1);
+  const tDau = iso(t0), tCuoi = iso(new Date(TODAY.getFullYear(), TODAY.getMonth(), 0));
+  [["Hôm nay", nay, nay], ["7 ngày", iso(dAdd(TODAY, -6)), nay],
+  ["Tháng này", d1, nay], ["Tháng trước", tDau, tCuoi]].forEach(([t, a, b]) => {
+    const n = el("button", "btn sm" + (S.mktTu === a && S.mktDen === b ? " pri" : ""), t);
+    n.onclick = () => dat(a, b);
+    hang.appendChild(n);
+  });
+  if (S.mktTu || S.mktDen) {
+    const bX = el("button", "btn sm", "✕ Bỏ mốc");
+    bX.onclick = () => dat("", "");
+    hang.appendChild(bX);
+  }
+
+  hang.appendChild(el("div", "grow"));
+
+  const dang = (typeof mktLocNgay === "function") ? mktLocNgay(list0 || []) : (list0 || []);
+  hang.appendChild(el("span", "sub", "Đang hiện <b>" + dang.length + "</b> số"
+    + ((S.mktTu || S.mktDen) ? " trong khoảng đã chọn" : "")));
+
+  const bT = el("button", "btn sm", "⬇ Tải danh sách (CSV)");
+  bT.title = "Tải đúng những số đang hiện ở bảng dưới";
+  bT.onclick = () => {
+    if (typeof TAI_DUOC === "function" && !TAI_DUOC()) {
+      toast("Chỉ Ban điều hành và Kế toán mới tải được dữ liệu"); return;
+    }
+    const ds = (typeof mktLocNgay === "function") ? mktLocNgay(list0 || []) : (list0 || []);
+    if (!ds.length) { toast("Không có số nào trong khoảng đang chọn"); return; }
+    pcTaiCSV(ds, S.mktTu, S.mktDen);
+    toast("Đã tải " + ds.length + " số");
+  };
+  hang.appendChild(bT);
+
+  v.appendChild(hang);
+  try { if (typeof chanTaiFile === "function") chanTaiFile(); } catch (e) { }
+  return hang;
+}
+
+/* gắn ngay dưới hàng lọc nhanh có sẵn — bọc, không viết đè */
+(function () {
+  if (typeof mktTomTatNgay !== "function") return;
+  const goc = mktTomTatNgay;
+  mktTomTatNgay = function (v, list) {
+    const r = goc.apply(this, arguments);
+    try { pcHangMocTG(v, list); } catch (e) { }
+    return r;
+  };
+})();
+/* ============ v137 — SỐ ĐÃ VỀ Ở PAGE KHÁC HÔM TRƯỚC PHẢI BÁO TRÙNG ============
+   Chị hỏi đúng chỗ. Cột "Check trùng" từ trước tới nay chỉ đối chiếu với
+   DANH SÁCH KHÁCH (bảng KH). Nghĩa là nó chỉ báo trùng khi số đó ĐÃ ĐƯỢC CHIA
+   cho nhân viên và thành khách. Còn số đã về hôm trước ở page khác mà vẫn nằm
+   trong hộp Pancake (chưa chia, hoặc đã Loại) thì nó không biết → hiện "số mới".
+
+   Thêm một lỗ nữa: Pancake có khi trả số kiểu 84908609754 hoặc +84 908 609 754,
+   trong khi khách trong bảng KH lưu 0908609754. So chuỗi thẳng thì hai số đó
+   khác nhau, nên cùng một người vẫn lọt thành "số mới".
+
+   v137 chữa cả hai, và CHỈ THÊM — không viết đè hàm cũ nào:
+     1. So số điện thoại theo dạng chuẩn (84… / +84… / thiếu số 0 đều quy về
+        cùng một dạng) trước khi đối chiếu với bảng khách.
+     2. Nếu không trùng khách thì soi tiếp trong CHÍNH HỘP PANCAKE: số này đã về
+        lần nào trước đó chưa, ngày nào, ở page nào — có thì dán chip cam
+        "trùng trong hộp" ngay tại dòng đó.
+   Cột trong tệp CSV tải về cũng ghi theo đúng như vậy.
+   ====================================================================== */
+
+/* ---------- 1. quy mọi kiểu số về một dạng để so cho đúng ---------- */
+function sdtChuan(s) {
+  let d = String(s == null ? "" : s).replace(/\D/g, "");
+  if (!d) return "";
+  if (d.slice(0, 4) === "0084") d = d.slice(4);
+  if (d.slice(0, 2) === "84" && d.length >= 11) d = d.slice(2);
+  if (d[0] !== "0") d = "0" + d;
+  return d;
+}
+
+/* ---------- 2. trùng với khách: thêm phép so theo dạng chuẩn ---------- */
+(function () {
+  if (typeof pcTrung !== "function") return;
+  const goc = pcTrung;
+  pcTrung = function (sdt) {
+    const r = goc.apply(this, arguments);
+    if (r) return r;                                   /* cách cũ tìm ra rồi thì thôi */
+    try {
+      const s = sdtChuan(sdt);
+      if (!s) return r;
+      const k = KH.find(x => x && sdtChuan(x.phone) === s);
+      if (!k || k.phone === sdt) return r;             /* không có, hoặc đã thử ở trên */
+      return goc.call(this, k.phone);                  /* để hàm cũ tự dựng kết luận */
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* ---------- 3. trùng ngay trong hộp Pancake ---------- */
+function pcChiMucSo() {
+  const idx = {};
+  let ds;
+  try { ds = (typeof idbHopInbox === "function") ? idbHopInbox() : INBOX; } catch (e) { ds = []; }
+  (ds || []).forEach(x => {
+    if (!x || !x.phone) return;
+    const s = sdtChuan(x.phone);
+    if (!s) return;
+    (idx[s] = idx[s] || []).push(x);
+  });
+  return idx;
+}
+const pcMocCua = y => String((y && y.at) || "") + " " + String((y && y.gio) || "");
+
+/* lần gần nhất TRƯỚC dòng này mà cùng số — không có thì trả null */
+function pcLanTruoc(x, idx) {
+  if (!x || !x.phone) return null;
+  const s = sdtChuan(x.phone); if (!s) return null;
+  const ds = (idx || {})[s];
+  if (!ds || ds.length < 2) return null;
+  const m = pcMocCua(x), id = String(x.id);
+  let truoc = null;
+  ds.forEach(y => {
+    if (y === x || String(y.id) === id) return;
+    const my = pcMocCua(y);
+    if (my < m || (my === m && String(y.id) < id)) {
+      if (!truoc || my > pcMocCua(truoc)) truoc = y;
+    }
+  });
+  return truoc;
+}
+
+/* chữ cho cột Check trùng trong tệp CSV */
+function pcTrungChu(x) {
+  try {
+    if (pcTrung(x && x.phone)) return "Trùng khách";
+    const t = pcLanTruoc(x, pcChiMucSo());
+    if (!t) return "Số mới";
+    let p = "";
+    try { p = (pageOf(t.page) || {}).mkt || ""; } catch (e) { }
+    return "Trùng trong hộp · " + (t.at || "") + (p ? " · " + p : "");
+  } catch (e) { return "Số mới"; }
+}
+
+/* ---------- 4. dán chip lên đúng những dòng đang bị ghi nhầm "số mới" ---------- */
+function pcDanhDauTrungHop(v, list0, xong) {
+  const bang = [...v.querySelectorAll("table")];
+  const tb = bang.length ? bang[bang.length - 1].querySelector("tbody") : null;
+  if (!tb) return 0;
+  let hien;
+  try { hien = (typeof mktLocNgay === "function" ? mktLocNgay(list0 || []) : (list0 || [])).slice(0, 200); }
+  catch (e) { return 0; }
+  if (!hien.length || tb.children.length !== hien.length) return 0;   /* không khớp thì không đụng */
+  const idx = pcChiMucSo();
+  let so = 0;
+  hien.forEach((x, i) => {
+    const tr = tb.children[i]; if (!tr) return;
+    const o = [...tr.children].find(c => /số mới/i.test(c.textContent || ""));
+    if (!o) return;                                   /* đã báo trùng khách rồi thì để nguyên */
+    const t = pcLanTruoc(x, idx); if (!t) return;
+    let p = "";
+    try { p = (pageOf(t.page) || {}).mkt || ""; } catch (e) { }
+    const ngay = (typeof fmtD === "function" ? fmtD(t.at || "") : (t.at || ""));
+    o.innerHTML = '<span class="chip wn">trùng trong hộp</span>'
+      + '<div class="sub" style="margin-top:3px">đã về ' + esc(ngay)
+      + (t.gio ? " " + esc(t.gio) : "")
+      + (p ? " · " + esc(p) : "")
+      + (t.status === "tha" ? " · đã chia" : "") + "</div>";
+    so++;
+  });
+  return so;
+}
+
+(function () {
+  if (typeof mktChoChia !== "function") return;
+  const goc = mktChoChia;
+  mktChoChia = function (v, list0, xong) {
+    const r = goc.apply(this, arguments);
+    try { pcDanhDauTrungHop(v, list0, xong); } catch (e) { }
+    return r;
+  };
+})();
+
+/* ---------- 5. cột Check trùng trong tệp CSV ghi theo đúng kết luận trên ---------- */
+(function () {
+  if (typeof pcDongCSV !== "function") return;
+  const goc = pcDongCSV;
+  pcDongCSV = function (x, i) {
+    const r = goc.apply(this, arguments);
+    try { if (Array.isArray(r) && r.length >= 11) r[10] = pcTrungChu(x); } catch (e) { }
+    return r;
+  };
+})();
+/* ============ v138 — 9 ĐƠN 0đ KHÔNG AI TẠO: ĐÓ LÀ PHIẾU NHÁP TỰ MỞ ============
+   Chị hỏi vì sao nhân viên chưa chốt đơn nào mà màn Đơn hàng lại có 9 đơn
+   DH3961…DH3969, ngày 01/10, tất cả 0đ, không có tên sản phẩm.
+
+   Không ai tạo thật. Web đang TỰ mở một phiếu đăng ký trống mỗi khi khách
+   chuyển sang L7/L8, hoặc mỗi khi ai đó mở phiếu đăng ký trong hồ sơ khách mà
+   khách đó chưa có đơn. Phiếu trống ấy được ghi là một đơn (có dấu riêng
+   "nháp"), nên nó lọt vào danh sách và vào ô "Số đơn tháng này".
+
+   Nó KHÔNG làm sai doanh thu — 0đ thì cộng vào vẫn là 0 — nhưng làm sai
+   SỐ ĐƠN, và khiến chị tưởng nhân viên đã chốt.
+
+   v138: phiếu nháp còn trống thì không tính là đơn nữa — không hiện trong
+   danh sách, không vào ô Số đơn, không vào tệp CSV. Khi nào có người điền mã
+   khoá hoặc số tiền vào thì nó thành đơn thật và hiện lên như thường.
+   Vẫn có một dòng nhỏ cho chị xem lại chúng khi cần.
+   ====================================================================== */
+
+/* phiếu nháp hoàn toàn trống — chưa ai điền gì */
+function donPhieuTrong(o) {
+  if (!o || o.nhap !== 1) return false;
+  if (o.code) return false;
+  if (Number(o.doanhThu || 0) > 0 || Number(o.giaGoc || 0) > 0 || Number(o.uuDai || 0) > 0) return false;
+  if ((o.bills || []).length || (o.dinhKem || []).length) return false;
+  if ((o.dots || []).some(d => d && (d.daThu || Number(d.soTien || 0) > 0))) return false;
+  if (o.trangThai === "daDuyet") return false;      /* đã duyệt thì coi như đơn thật */
+  return true;
+}
+const donDemNhapTrong = () => {
+  try { return ORDERS.filter(donPhieuTrong).length; } catch (e) { return 0; }
+};
+
+/* ---------- 1. không tính phiếu trống là đơn ---------- */
+(function () {
+  if (typeof locDon !== "function") return;
+  const goc = locDon;
+  locDon = function () {
+    const r = goc.apply(this, arguments);
+    if (S.donHienNhap) return r;
+    try { return (r || []).filter(o => !donPhieuTrong(o)); } catch (e) { }
+    return r;
+  };
+})();
+
+/* ---------- 2. một dòng nhỏ để chị xem lại khi cần ---------- */
+function donDongNhap(v) {
+  const cu = document.getElementById("donNhapDong"); if (cu) cu.remove();
+  const n = donDemNhapTrong();
+  if (!n) return;
+  const d = el("div", "warnbar wn"); d.id = "donNhapDong";
+  d.innerHTML = "<div>Đang <b>" + (S.donHienNhap ? "hiện" : "ẩn") + " " + n
+    + " phiếu đăng ký trống</b> — web tự mở khi khách sang L7/L8 hoặc khi mở hồ sơ, "
+    + "chưa ai điền mã khoá hay số tiền nên <b>không tính là đơn</b>.</div>";
+  const b = el("button", "btn sm", S.donHienNhap ? "Ẩn đi" : "Xem thử");
+  b.onclick = () => { S.donHienNhap = S.donHienNhap ? 0 : 1; render(); };
+  d.appendChild(el("div", "grow"));
+  d.appendChild(b);
+  v.insertBefore(d, v.firstChild);
+}
+
+(function () {
+  if (typeof viewDonHang !== "function") return;
+  const goc = viewDonHang;
+  viewDonHang = function (v) {
+    const r = goc.apply(this, arguments);
+    try { donDongNhap(v); } catch (e) { }
+    return r;
+  };
+  try { VIEWS.donhang = () => viewDonHang; } catch (e) { }
+})();
+/* ============ v139 — DATA LANDING PAGE ============
+   Theo đúng ba điều chị chốt:
+     1. Data Landing Page VÀO HÀNG CHỜ CHIA như data Pancake — chia cho sales,
+        dùng chung quy luật chia theo ngày.
+     2. Tính vào báo cáo TỪ 01/10/2026. Dữ liệu cũ hơn (từ 2023) vẫn kéo về
+        nhưng chỉ dùng để BÁO TRÙNG, không cộng vào báo cáo tháng cũ.
+     3. Trùng trong CÙNG MỘT NGÀY giữa Pancake và Landing → bên nào về TRƯỚC
+        thì được tính, bên kia đánh dấu trùng và không tính data lần hai.
+        Trùng với ngày TRƯỚC đó thì vẫn là data mới, chỉ báo trùng (v137 lo).
+
+   Cách làm gọn nhất và ít rủi ro nhất: mỗi dòng Landing Page được nạp thành
+   MỘT DÒNG TRONG HỘP như tin Pancake, gắn vào page "Landing Page" vốn đã có
+   sẵn trong mảng FB 35-55. Nhờ vậy mọi thứ đang chạy — chờ chia, chia cho
+   sales, quy luật chia, số data theo mảng/theo page/theo tỉnh, CP/DT, lọc
+   ngày, mốc thời gian, tải CSV, báo trùng — tự khớp, không phải sửa chỗ nào.
+   ====================================================================== */
+
+const LP_TU_NGAY = "2026-10-01";          /* mốc bắt đầu tính vào báo cáo */
+const LP_KHOA_LUU = "ales_lp_lichsu";
+var LP = { moc: 1, so: {}, tong: 0, dangLay: 0, loi: "", lanCuoi: 0, them: 0 };
+
+function lpPageId() {
+  try { const p = PAGES.find(x => x.ten === "Landing Page"); if (p) return p.id; } catch (e) { }
+  return "p5";
+}
+
+/* ---------- 1. nhớ lịch sử cũ (chỉ số + ngày sớm nhất) ---------- */
+function lpLuu() {
+  try { localStorage.setItem(LP_KHOA_LUU, JSON.stringify({ moc: LP.moc, so: LP.so, tong: LP.tong })); }
+  catch (e) { }
+}
+(function () {
+  try {
+    const j = JSON.parse(localStorage.getItem(LP_KHOA_LUU) || "null");
+    if (j && typeof j === "object") {
+      LP.moc = Number(j.moc) || 1;
+      LP.so = j.so && typeof j.so === "object" ? j.so : {};
+      LP.tong = Number(j.tong) || 0;
+    }
+  } catch (e) { }
+})();
+
+/* ---------- 2. nạp dòng Landing thành dòng trong hộp ---------- */
+function lpNap(ds) {
+  const hop = (typeof idbHopInbox === "function") ? idbHopInbox() : INBOX;
+  const daCo = new Set(hop.map(x => x && x.id).filter(Boolean));
+  const pg = lpPageId();
+  let them = 0;
+  (ds || []).forEach(r => {
+    if (!r || !r.id) return;
+    const s = (typeof sdtChuan === "function") ? sdtChuan(r.sdt) : String(r.sdt || "");
+    const at = String(r.at || "");
+    /* lịch sử để báo trùng: giữ ngày SỚM NHẤT của mỗi số */
+    if (s && at) { if (!LP.so[s] || at < LP.so[s]) LP.so[s] = at; }
+    if (!at || at < LP_TU_NGAY) return;          /* cũ hơn mốc → chỉ để báo trùng */
+    if (daCo.has(r.id)) return;
+    hop.unshift({
+      id: r.id, pcId: null, at: at, gio: String(r.gio || ""),
+      page: pg, name: String(r.ten || ""),
+      raw: "Landing Page" + (r.lop ? " · " + r.lop : "") + (r.tinh ? " · " + r.tinh : ""),
+      phone: s || null, tinh: String(r.tinh || ""), lop: String(r.lop || ""),
+      link: String(r.link || ""),
+      status: s ? "duyet" : "cho", assign: null, nguonLP: 1, tzvn: 1
+    });
+    daCo.add(r.id); them++;
+  });
+  return them;
+}
+
+/* ---------- 3. kéo từ kho về ---------- */
+async function lpKeo() {
+  if (LP.dangLay) return 0;
+  /* chỉ cần có đường dẫn kho là thử — kho tự chối nếu thiếu phiếu, và lúc đó
+     màn Landing sẽ nói rõ lý do thay vì im lặng */
+  if (typeof KHO === "undefined" || !KHO || !KHO.url) return 0;
+  LP.dangLay = 1; LP.loi = ""; let them = 0;
+  try {
+    for (let v = 0; v < 200; v++) {
+      const j = await khoGET({ fn: "landing", tu: LP.moc + 1, n: 500 });
+      const ds = j.lp || [];
+      if (j.tong) LP.tong = Number(j.tong) || LP.tong;
+      if (ds.length) them += lpNap(ds);
+      const moc = Number(j.moc) || 0;
+      if (moc > LP.moc) LP.moc = moc;
+      lpLuu();
+      if (j.het || !ds.length) break;
+    }
+    LP.lanCuoi = Date.now();
+  } catch (e) {
+    LP.loi = (e && e.message) || "không gọi được kho";
+  } finally { LP.dangLay = 0; }
+  LP.them += them;
+  if (them) { try { lpSoatTrungNgay(); } catch (e) { } try { persist(); render(); } catch (e) { } }
+  return them;
+}
+
+/* ---------- 4. trùng trong CÙNG MỘT NGÀY: ai về trước thì được tính ---------- */
+function lpSoatTrungNgay() {
+  const hop = (typeof idbHopInbox === "function") ? idbHopInbox() : INBOX;
+  const nhom = {};
+  hop.forEach(x => {
+    if (!x || !x.at) return;
+    const s = (typeof sdtChuan === "function") ? sdtChuan(x.phone || x.sdtTrung) : (x.phone || x.sdtTrung || "");
+    if (!s) return;
+    (nhom[s + "|" + x.at] = nhom[s + "|" + x.at] || []).push(x);
+  });
+  const traLai = x => {
+    if (!x.trungNgay) return 0;
+    if (!x.phone) x.phone = x.sdtTrung || null;
+    delete x.sdtTrung; delete x.trungNgay; delete x.trungVoi;
+    if (x.status === "trungngay") x.status = x.phone ? "duyet" : "cho";
+    return 1;
+  };
+  let doi = 0;
+  Object.keys(nhom).forEach(k => {
+    const g = nhom[k];
+    if (g.length < 2) { doi += traLai(g[0]); return; }
+    /* chỉ xử lý khi là trùng CHÉO giữa Landing và Pancake — không đụng các
+       trường hợp cũ hai tin Pancake cùng ngày, để không đổi con số đã chốt */
+    const coLP = g.some(x => x && x.nguonLP), coPC = g.some(x => x && !x.nguonLP);
+    if (!coLP || !coPC) { g.forEach(x => { doi += traLai(x); }); return; }
+    const gio = x => String((x && x.gio) || "99:99");
+    g.sort((a, b) => gio(a).localeCompare(gio(b)) || String(a.id).localeCompare(String(b.id)));
+    g.forEach((x, i) => {
+      if (i === 0) { doi += traLai(x); return; }
+      if (x.trungNgay) return;
+      if (x.status === "tha") return;             /* đã chia cho ai rồi thì để yên */
+      x.sdtTrung = x.phone; x.phone = null;
+      x.trungNgay = 1; x.trungVoi = g[0].id; x.status = "trungngay";
+      doi++;
+    });
+  });
+  return doi;
+}
+
+/* ---------- 5. lịch sử Landing cũ cũng tính là "đã về trước đó" ---------- */
+(function () {
+  if (typeof pcLanTruoc !== "function") return;
+  const goc = pcLanTruoc;
+  pcLanTruoc = function (x, idx) {
+    const r = goc.apply(this, arguments);
+    if (r) return r;
+    try {
+      if (!x || !x.at) return r;
+      const s = sdtChuan(x.phone || x.sdtTrung);
+      if (!s) return r;
+      const ngay = LP.so[s];
+      if (!ngay || ngay >= String(x.at)) return r;
+      return { id: "LP-cu", at: ngay, gio: "", page: lpPageId(), nguonLP: 1, cuLP: 1 };
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* ---------- 6. tab Data Landing Page ---------- */
+(function () {
+  try {
+    if (typeof MKT_TAB !== "undefined" && !MKT_TAB.some(t => t[0] === "lp"))
+      MKT_TAB.splice(1, 0, ["lp", "Data Landing Page"]);
+  } catch (e) { }
+})();
+
+function lpDanhSach() {
+  const hop = (typeof idbHopInbox === "function") ? idbHopInbox() : INBOX;
+  return hop.filter(x => x && x.nguonLP);
+}
+
+function lpVeMan(v) {
+  const tabs = el("div", "tabs");
+  MKT_TAB.forEach(([k, n]) => {
+    const b = el("button", (S.mktTop || "pc") === k ? "on" : "", n);
+    b.onclick = () => { S.mktTop = k; render(); };
+    tabs.appendChild(b);
+  });
+  v.appendChild(tabs);
+
+  const ds = lpDanhSach();
+  const cho = ds.filter(x => x.status !== "tha");
+  const tha = ds.filter(x => x.status === "tha");
+  const sub = S.lpTab === "tha" ? "tha" : "cho";
+  const tabs2 = el("div", "tabs"); tabs2.style.marginTop = "-6px";
+  [["cho", "Chờ chia (" + cho.length + ")"], ["tha", "Đã chia (" + tha.length + ")"]].forEach(([k, n]) => {
+    const b = el("button", sub === k ? "on" : "", n);
+    b.onclick = () => { S.lpTab = k; render(); };
+    tabs2.appendChild(b);
+  });
+  v.appendChild(tabs2);
+
+  const hang = el("div", "warnbar wn");
+  if (LP.loi) {
+    hang.className = "warnbar bad";
+    hang.innerHTML = "<div><b>Kho chưa hiểu lệnh <code>landing</code>.</b> "
+      + "Hãy dán đoạn mã Apps Script em gửi (2 chỗ) rồi <b>Triển khai → Phiên bản mới</b>. "
+      + "Kho báo: " + esc(LP.loi) + "</div>";
+  } else {
+    hang.innerHTML = "<div>Sheet <b>LANDINGPAGE</b> có <b>" + (LP.tong || 0) + "</b> dòng · "
+      + "đã đọc tới dòng <b>" + LP.moc + "</b>. "
+      + "Tính vào báo cáo từ <b>" + (typeof fmtD === "function" ? fmtD(LP_TU_NGAY) : LP_TU_NGAY) + "</b> — "
+      + "các số về trước mốc này vẫn được dùng để <b>báo trùng</b>.</div>";
+  }
+  const bL = el("button", "btn sm", LP.dangLay ? "Đang lấy…" : "⟳ Lấy thêm từ kho");
+  bL.disabled = !!LP.dangLay;
+  bL.onclick = async () => { bL.disabled = true; bL.textContent = "Đang lấy…"; await lpKeo(); render(); };
+  hang.appendChild(el("div", "grow"));
+  hang.appendChild(bL);
+  v.appendChild(hang);
+
+  if (typeof mktChoChia === "function") mktChoChia(v, sub === "tha" ? tha : cho, sub === "tha");
+}
+
+(function () {
+  if (typeof viewDLMkt !== "function") return;
+  const goc = viewDLMkt;
+  viewDLMkt = function (v) {
+    if ((S.mktTop || "pc") !== "lp") return goc.apply(this, arguments);
+    try { return lpVeMan(v); } catch (e) { S.mktTop = "pc"; return goc.apply(this, arguments); }
+  };
+  try { VIEWS.ads = () => viewDLMkt; } catch (e) { }
+})();
+
+/* ---------- 7. tự kéo: lúc mở web và mỗi 5 phút ---------- */
+setTimeout(() => { try { lpKeo(); } catch (e) { } }, 6000);
+(function () {
+  if (typeof khoLay !== "function") return;
+  const goc = khoLay;
+  khoLay = async function () {
+    const r = await goc.apply(this, arguments);
+    try { if (Date.now() - (LP.lanCuoi || 0) > 300000) lpKeo(); } catch (e) { }
+    return r;
+  };
+})();
 </script></body></html>
