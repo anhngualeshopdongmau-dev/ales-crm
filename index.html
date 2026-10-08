@@ -490,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v153.0 · 07/10/2026";
+window.ALES_BAN = "v154.0 · 08/10/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -43494,6 +43494,164 @@ setTimeout(() => { try { pcDonDaChia(1); } catch (e) { } }, 4200);
         + "khác đè lên bản đã chia. v153 đã dọn và chặn không cho tái diễn — "
         + "khách và người phụ trách <b>không đổi gì cả</b>.</div>";
       b.insertBefore(d, b.children[1] || null);
+    } catch (e) { }
+    return r;
+  };
+})();
+/* ============ v154 — SỐ DATA GÕ THẲNG TRONG BẢNG · DỌN HAI NÚT THỪA ============
+   1. Chị hỏi đúng: quy luật "MKT hoặc Ban điều hành chỉnh được số data của một
+      ngày" đã làm từ v145, nhưng ô để điền lại nằm ở MỘT BẢNG RIÊNG phía dưới
+      màn, nên mở ra không ai thấy. v154 cho gõ THẲNG vào dòng SỐ DATA của chính
+      cái bảng chị đang nhìn — mỗi ô là một ngày × một mảng.
+
+        · Để trống  → ngày đó chạy đúng quy luật cũ, tự nhảy như trước.
+        · Gõ số     → RIÊNG ngày đó dùng số đã gõ; giá data, CP/DT, báo cáo
+                      MKT, BC Team… đều ăn theo. Các ngày khác KHÔNG đổi.
+
+      Quyền: mặc định MKT và Ban điều hành. Người khác muốn sửa thì vào Phân
+      quyền tick riêng — đúng kiểu chị dặn ở v144.
+
+   2. Hai nút chị hỏi:
+        · "🔎 Vì sao báo trùng?" — bỏ. Bấm thẳng vào chip "trùng · …" ở từng
+          dòng là mở đúng màn đó, không cần thêm nút. Chip nay có gạch chân
+          chấm cho dễ thấy là bấm được.
+        · "✔ Đánh dấu đã có khách rồi" — GIỮ, vì sắp tới chị nhập tệp Getfly
+          thì cần đúng nút này để dọn hàng chờ. Nhưng sửa cho an toàn: chỉ làm
+          với những dòng ĐANG TÍCH, không còn quét cả danh sách một lượt.
+   ====================================================================== */
+
+/* ---------- 1. quyền chỉnh số data ---------- */
+try {
+  if (typeof PERM_KEYS !== "undefined" && !PERM_KEYS.some(p => p.k === "cpsua"))
+    PERM_KEYS.push({ k: "cpsua", n: "Chỉnh số data trong Chi phí Ads (mặc định MKT và Ban điều hành)" });
+  if (typeof PERM_MAC_DINH !== "undefined" && PERM_MAC_DINH.mkt && PERM_MAC_DINH.mkt.indexOf("cpsua") < 0)
+    PERM_MAC_DINH.mkt += ",cpsua";
+} catch (e) { }
+function cpDuocSuaSoData() {
+  try { return myRole() === "admin" || can("cpsua"); } catch (e) { return false; }
+}
+
+/* ---------- 2. gõ thẳng vào dòng SỐ DATA của bảng theo ngày ---------- */
+function cpOSoDataGoThang(v, cols) {
+  if (!cpDuocSuaSoData()) return 0;
+  if (!Array.isArray(cols) || !cols.length) return 0;
+  const goc = v || document.getElementById("view"); if (!goc) return 0;
+  const the = [...goc.querySelectorAll(".card")]
+    .filter(x => /Chi phí · số data · giá data/.test(x.textContent || "")).pop();
+  if (!the || the._cpGo) return 0;
+  const tb = the.querySelector("table tbody"); if (!tb) return 0;
+  const hang = [...tb.children];
+  const i0 = hang.findIndex(tr => {
+    const o = tr.children && tr.children[0];
+    return o && /^\s*SỐ DATA\s*$/.test(o.textContent || "");
+  });
+  if (i0 < 0) return 0;
+  the._cpGo = 1;
+  let so = 0;
+  MANG.forEach((M, k) => {
+    const tr = hang[i0 + 1 + k]; if (!tr) return;
+    cols.forEach((x, ci) => {
+      if (x.loai !== "ngay" || !x.ngay) return;
+      const td = tr.children[ci + 1]; if (!td) return;
+      const tay = cpSoDataTay(x.ngay, M.id);
+      let tuDong = 0;
+      try { tuDong = cpSoDataGoc ? cpSoDataGoc(x.ngay, M.id) : 0; } catch (e) { }
+      td.innerHTML = "";
+      const i = el("input"); i.type = "number"; i.min = 0;
+      i.className = "cpGoSo";
+      i.style.cssText = "width:60px;padding:3px 4px;font-size:12px;text-align:right"
+        + (tay !== null ? ";border-color:var(--warning);font-weight:700" : "");
+      i.value = tay === null ? tuDong : tay;
+      i.title = tay === null
+        ? "Web tự tính " + tuDong + ". Gõ số khác để chỉnh tay RIÊNG ngày này."
+        : "Đang dùng số chỉnh tay. Web tự tính: " + tuDong + ". Xoá trống để trả về tự nhảy.";
+      i.onchange = () => {
+        const s = String(i.value == null ? "" : i.value).trim();
+        cpDatSoDataTay(x.ngay, M.id, s === "" ? null : s);
+        toast(s === "" ? "Đã trả ngày " + fmtD(x.ngay) + " về số tự nhảy"
+          : "Đã đặt số data ngày " + fmtD(x.ngay) + " = " + s);
+        render();
+      };
+      td.appendChild(i);
+      if (tay !== null) td.appendChild(el("div", "sub-cell", "chỉnh tay"));
+      so++;
+    });
+  });
+  /* nói rõ ngay trên đầu bảng */
+  try {
+    const h = the.querySelector(".card-h .sub");
+    if (h && !/gõ thẳng/.test(h.textContent || ""))
+      h.innerHTML += " · <b>dòng SỐ DATA gõ thẳng được</b> — để trống là tự nhảy, gõ số là riêng ngày đó dùng số đã gõ";
+  } catch (e) { }
+  return so;
+}
+(function () {
+  if (typeof mktLuoiCot !== "function") return;
+  const goc = mktLuoiCot;
+  mktLuoiCot = function (v, K, cols, hienQL) {
+    const r = goc.apply(this, arguments);
+    try { cpOSoDataGoThang(v, cols); } catch (e) { }
+    return r;
+  };
+})();
+
+/* ---------- 3. chip "trùng · …" trông rõ là bấm được ---------- */
+(function () {
+  try {
+    if (document.getElementById("trungCss")) return;
+    const s = document.createElement("style"); s.id = "trungCss";
+    s.textContent = ".chip.trung-xem{cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px}";
+    document.head.appendChild(s);
+  } catch (e) { }
+})();
+(function () {
+  if (typeof render !== "function") return;
+  const goc = render;
+  render = function () {
+    const r = goc.apply(this, arguments);
+    try {
+      const man = document.getElementById("view"); if (!man) return r;
+      [...man.querySelectorAll(".chip")].forEach(c => {
+        if (!/^\s*trùng\s*·/.test(c.textContent || "")) return;
+        c.classList.add("trung-xem");
+        if (!c.title) c.title = "Bấm để xem vì sao web báo trùng";
+      });
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* ---------- 4. dọn nút thừa · "đã có khách rồi" chỉ làm với dòng đang tích ---------- */
+(function () {
+  if (typeof mktChoChia !== "function") return;
+  const goc = mktChoChia;
+  mktChoChia = function (v, list0, xong) {
+    const r = goc.apply(this, arguments);
+    try {
+      if (xong || !v || !v.querySelectorAll) return r;
+      /* bỏ nút 🔎 — bấm thẳng vào chip là mở được màn soi */
+      [...v.querySelectorAll("button")]
+        .filter(b => /Vì sao báo trùng/.test(b.textContent || ""))
+        .forEach(b => { try { b.remove(); } catch (e) { } });
+
+      const b = [...v.querySelectorAll("button")]
+        .find(x => /Đánh dấu đã có khách rồi/.test(x.textContent || ""));
+      if (!b || b._v154) return r;
+      b._v154 = 1;
+      b.title = "Chỉ làm với những dòng ĐANG TÍCH — dọn khỏi hàng chờ, "
+        + "không tạo khách mới, không đổi người phụ trách";
+      b.onclick = () => {
+        let tick = [];
+        try { tick = (typeof pcSoDangTich === "function") ? pcSoDangTich(v, list0) : []; } catch (e) { }
+        if (!tick.length) { toast("Hãy tích những dòng muốn đánh dấu trước — ô tích ở đầu mỗi dòng"); return; }
+        const ds = tick.filter(x => { try { const d = pcTrung(x.phone); return !!(d && d.k); } catch (e) { return false; } });
+        if (!ds.length) { toast("Trong những dòng đang tích không có dòng nào đã có khách sẵn"); return; }
+        if (!confirm("Đánh dấu " + ds.length + " dòng ĐANG TÍCH là ĐÃ CÓ KHÁCH RỒI?\n\n"
+          + "Web bỏ chúng khỏi hàng chờ chia, KHÔNG tạo khách mới và KHÔNG đổi người phụ trách.")) return;
+        const kq = pcDanhDauDaCo(ds);
+        toast("Đã dọn " + kq.n + " dòng" + (kq.bo ? " · bỏ qua " + kq.bo : ""));
+        render();
+      };
     } catch (e) { }
     return r;
   };
