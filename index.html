@@ -490,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v165.0 · 09/10/2026";
+window.ALES_BAN = "v166.0 · 10/10/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -46422,6 +46422,114 @@ function lcGhiNote(imLang) {
       w.appendChild(b);
       body.insertBefore(w, body.firstChild);
     } catch (x) { }
+    return r;
+  };
+})();
+/* ============ v166 — KHÁCH ĐÃ CHỐT (L7/L8) VẪN XEM ĐƯỢC NOTE ============
+   Lỗi em sót ở v165: bản note "Dữ liệu chốt khách" lấy từ sheet LINK CHỐT
+   được ghi vào hồ sơ khách, nhưng chỗ xem nó lại nằm ở tab "Chăm sóc" —
+   mà khách ở L7/L8 thì web KHÔNG hiện tab đó (chỉ có Phiếu đăng ký · Kế toán
+   · Xếp lớp). Đúng những khách có dữ liệu LINK CHỐT là khách đã chốt, tức
+   L7/L8 — nên không ai mở ra xem được.
+
+   v166 sửa bằng cách ĐƯA THÊM, không bỏ gì:
+     · Tab "Phiếu đăng ký" của khách L7/L8 có thêm khối
+       "📹 Dữ liệu chốt khách — từ sheet LINK CHỐT", kèm nút ⇣ lấy lại ngay.
+     · Ngay dưới đó là LỊCH SỬ NOTE của khách (mọi note sales đã ghi), vì ở
+       L7/L8 trước nay cũng không có chỗ nào xem lại note cũ.
+   Tab "Chăm sóc" của các cấp khác giữ nguyên y như cũ.
+   ====================================================================== */
+
+function lcNoteCua(k) {
+  try { return ((k && k.acts) || []).find(function (a) { return a && a.lc === 1; }) || null; }
+  catch (e) { return null; }
+}
+/* đổi bản note dạng chữ thành HTML giữ nguyên xuống dòng */
+function lcHienChu(chu) {
+  const d = el("div");
+  d.style.cssText = "white-space:pre-wrap;font-size:13px;line-height:1.55";
+  d.textContent = String(chu == null ? "" : chu);
+  return d;
+}
+function lcKhoiChoDon(k) {
+  const c = el("div", "card"); c.id = "lcKhoiDon";
+  const h = el("div", "card-h");
+  const s = (typeof sdtChuan === "function") ? sdtChuan(k && k.phone) : "";
+  const co = (((DB.LC || {}).ds) || []).filter(function (x) {
+    return ((typeof sdtChuan === "function") ? sdtChuan((x.v || [])[5]) : "") === s;
+  }).length;
+  h.innerHTML = "<h3>📹 Dữ liệu chốt khách</h3>"
+    + '<span class="chip">từ sheet LINK CHỐT trong Kho dữ liệu</span>';
+  c.appendChild(h);
+  const b = el("div", "card-b");
+  const n = lcNoteCua(k);
+  if (LC && LC.chuaDan) {
+    b.appendChild(el("div", "nb-hint",
+      '<b style="color:var(--critical)">Kho chưa hiểu lệnh <code>linkchot</code></b> — cần dán '
+      + "khối mã trong tệp <b>APPS-SCRIPT-them-LINKCHOT.md</b> vào Apps Script rồi "
+      + "<b>Triển khai → ✏️ → Phiên bản mới</b>."));
+  } else if (!n) {
+    b.appendChild(el("div", "nb-hint",
+      co ? "Có <b>" + co + "</b> cuộc của số này trong sheet — bấm nút bên dưới để gộp thành note."
+        : "Chưa thấy cuộc nào của số này trong sheet LINK CHỐT. Web tự lấy lại mỗi 5 phút."));
+  } else {
+    b.appendChild(lcHienChu(n.text));
+  }
+  const bt = el("button", "btn sm", "⇣ Lấy dữ liệu chốt ngay");
+  bt.style.marginTop = "8px";
+  bt.onclick = async function () {
+    bt.disabled = true;
+    try { await lcKeoKho(0); } catch (e) { }
+    bt.disabled = false;
+    try { openKH(k.id, "deal"); } catch (e) { }
+  };
+  b.appendChild(bt);
+  c.appendChild(b);
+  return c;
+}
+
+/* lịch sử note của khách — dựng gọn để khách L7/L8 cũng xem lại được */
+function lcLichSuNote(k) {
+  const ds = ((k && k.acts) || []).slice().sort(function (a, b) {
+    return String(b.t || "").localeCompare(String(a.t || ""));
+  });
+  const c = el("div", "card"); c.id = "lcLichSu";
+  const h = el("div", "card-h");
+  h.innerHTML = "<h3>Lịch sử chăm sóc</h3><span class=\"chip\">" + ds.length + " mục</span>";
+  c.appendChild(h);
+  const b = el("div", "card-b");
+  if (!ds.length) {
+    b.appendChild(el("div", "nb-hint", "Chưa có ghi chú nào."));
+  } else {
+    ds.slice(0, 60).forEach(function (a) {
+      const r = el("div");
+      r.style.cssText = "padding:8px 0;border-top:1px solid var(--border)";
+      let ai = "";
+      try { ai = a.by ? (userOf(a.by) || {}).name || "" : ""; } catch (e) { ai = ""; }
+      const dau = el("div", "sub");
+      dau.innerHTML = esc(fmtD(a.t || "")) + (a.type ? " · " + esc(a.type) : "")
+        + (ai ? " · " + esc(ai) : "");
+      r.appendChild(dau);
+      r.appendChild(lcHienChu(a.text || ""));
+      b.appendChild(r);
+    });
+    if (ds.length > 60) b.appendChild(el("div", "nb-hint", "… còn " + (ds.length - 60) + " mục cũ hơn."));
+  }
+  c.appendChild(b);
+  return c;
+}
+
+(function () {
+  if (typeof drTabDeal !== "function") return;
+  const goc = drTabDeal;
+  drTabDeal = function (body, k, T, O) {
+    const r = goc.apply(this, arguments);
+    try {
+      if (!body || !k) return r;
+      if (k.level !== "L7" && k.level !== "L8") return r;
+      if (!body.querySelector("#lcKhoiDon")) body.appendChild(lcKhoiChoDon(k));
+      if (!body.querySelector("#lcLichSu")) body.appendChild(lcLichSuNote(k));
+    } catch (e) { }
     return r;
   };
 })();
