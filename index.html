@@ -490,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v168.0 · 12/10/2026";
+window.ALES_BAN = "v169.0 · 12/10/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -46994,5 +46994,266 @@ async function dnLayDs(ep) {
     document.addEventListener("DOMContentLoaded", () => setTimeout(thu, 150));
   else setTimeout(thu, 150);
   setTimeout(thu, 1200);                           /* màn có thể bị vẽ lại muộn */
+})();
+/* ============ v169 — MÁY THIẾU THÌ KÉO VỀ, KHÔNG ĐƯỢC ĐẨY ĐÈ LÊN KHO ============
+   Chiều 12/10 máy bạn Hiền Minh hiện "⇡ Đang lưu 10950" và treo rất lâu, trong khi
+   bạn ấy không sửa một chữ nào. Máy đó lúc đó chỉ giữ 1.000/8.816 khách.
+
+   Nguyên nhân, em soi ra ba lớp:
+
+   1. DẤU VẾT ĐỒNG BỘ CHỈ NẰM TRONG BỘ NHỚ TẠM.
+      `khoDauVet` ghi lại "lần trước đã đẩy lên kho những gì", nhưng nó là biến
+      thường, tải lại trang (F5) là về rỗng. Rỗng thì `khoTimDoi()` so ra MỌI bản
+      ghi đều "vừa đổi" → web đẩy cả kho lên lại, dù không ai sửa gì.
+
+   2. KHÔNG CÓ CHỐT CHẶN SỐ LƯỢNG.
+      Người thật không bao giờ sửa 10.950 bản ghi trong một lượt. Con số đó chỉ có
+      thể là lỗi, nhưng web vẫn lẳng lặng đẩy.
+
+   3. MÁY ĐANG THIẾU VẪN ĐƯỢC ĐẨY.
+      Máy giữ bản cũ hơn kho mà vẫn đẩy lên thì ghi đè bản mới bằng bản cũ. Đây là
+      chỗ nguy hiểm nhất — may mà lệnh ghi của kho không có lệnh xoá nên không mất
+      dòng nào, nhưng vẫn có thể đè mất phần vừa cập nhật.
+
+   v169 chữa cả ba:
+     A. Lưu dấu vết xuống máy, dạng MÃ RÚT GỌN (không giữ cả chuỗi json cho nhẹ).
+        F5 bao nhiêu lần cũng không đẩy lại.
+     B. Quá 500 bản ghi một lượt thì DỪNG, hiện cảnh báo, chờ người bấm đồng ý.
+     C. Máy thiếu so với kho thì CẤM ĐẨY và tự kéo cho đủ. Nhân viên không mở được
+        hộp Kho chung nên phải tự chữa, không thể bắt họ bấm nút.
+     D. Dải vàng "còn N việc chưa lên kho — bấm Đẩy lên kho ngay" không được hiện
+        khi máy đang thiếu: đúng lúc đó lời khuyên của nó là ngược.
+
+   CHỈ GHI ĐÈ hai hàm có chủ đích (`khoChupLai`, `khoTimDoi`) theo đúng kiểu khai
+   báo hàm mà cả bộ mã đang dùng; phần còn lại là bọc thêm.
+   ====================================================================== */
+
+var DV = {
+  KEY: "ales_dauvet_v2",
+  NGUONG: 500,          /* quá ngần này trong một lượt là coi như bất thường */
+  choPhep: 0,           /* người dùng đã bấm "vẫn đẩy" */
+  chan: 0,              /* đang chặn vì quá ngưỡng */
+  soChan: 0,
+  thieu: 0,             /* máy đang thiếu so với kho */
+  moTaThieu: "",
+  dangDoi: 0,
+  lucLuu: 0
+};
+
+/* ---------- A. dấu vết: mã rút gọn + lưu xuống máy ---------- */
+
+/* hai hàm băm khác nhau ghép lại cho khó đụng độ; dài ~20 ký tự thay vì cả bản ghi */
+function dvBam(s) {
+  var a = 0x811c9dc5, b = 5381;
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charCodeAt(i);
+    a ^= c; a = (a * 16777619) >>> 0;
+    b = (((b << 5) + b) + c) >>> 0;
+  }
+  return s.length.toString(36) + "." + a.toString(36) + "." + b.toString(36);
+}
+
+function dvLuu(ep) {
+  const nay = Date.now();
+  if (!ep && nay - DV.lucLuu < 4000) return;      /* đừng ghi liên tục */
+  DV.lucLuu = nay;
+  try { localStorage.setItem(DV.KEY, JSON.stringify(khoDauVet)); } catch (e) { }
+}
+
+function dvNap() {
+  try {
+    const s = localStorage.getItem(DV.KEY);
+    if (!s) return 0;
+    const o = JSON.parse(s);
+    if (!o || typeof o !== "object") return 0;
+    let co = 0;
+    Object.keys(khoDauVet).forEach(t => {
+      if (o[t] && typeof o[t] === "object") { khoDauVet[t] = o[t]; co++; }
+    });
+    return co;
+  } catch (e) { return 0; }
+}
+
+/* ghi đè: chụp dấu vết bằng mã rút gọn, rồi lưu xuống máy */
+function khoChupLai() {
+  const B = khoBangDS();
+  Object.keys(B).forEach(t => {
+    const m = {};
+    (B[t] || []).forEach(x => { if (x && x.id != null) m[x.id] = dvBam(JSON.stringify(x)); });
+    khoDauVet[t] = m;
+  });
+  DV.chan = 0; DV.soChan = 0; DV.choPhep = 0;
+  dvLuu(1);
+  try { dvVeCanhBao(); } catch (e) { }
+}
+
+/* ---------- B + C. tìm phần đã đổi, kèm hai chốt chặn ---------- */
+function khoTimDoi() {
+  const B = khoBangDS(), ra = {}, moi = {};
+  let so = 0; khoQuaLon = [];
+  Object.keys(B).forEach(t => {
+    const m = {}, ds = [];
+    (B[t] || []).forEach(x => {
+      if (!x || x.id == null) return;
+      const s = JSON.stringify(x);
+      const h = dvBam(s);
+      m[x.id] = h;
+      if (s.length > O_TOI_DA) { khoQuaLon.push(t + " · " + x.id); return; }
+      if (khoDauVet[t][x.id] !== h) { ds.push(x); so++; }
+    });
+    moi[t] = m;
+    if (ds.length) ra[t] = ds;
+  });
+
+  /* CHỐT 1 — máy đang thiếu so với kho thì tuyệt đối không đẩy */
+  if (so && DV.thieu) {
+    DV.chan = 1; DV.soChan = so;
+    dvVeCanhBao();
+    return { goi: {}, so: 0, moi: {} };
+  }
+
+  /* CHỐT 2 — quá ngưỡng thì dừng, chờ người bấm đồng ý */
+  if (so > DV.NGUONG && !DV.choPhep) {
+    DV.chan = 1; DV.soChan = so;
+    dvVeCanhBao();
+    return { goi: {}, so: 0, moi: {} };
+  }
+
+  DV.chan = 0; DV.soChan = 0;
+  try { dvVeCanhBao(); } catch (e) { }          /* hết chặn thì gỡ dải cảnh báo đi */
+  return { goi: ra, so, moi };
+}
+
+/* đẩy xong một lượt thì nhớ lại ngay, khỏi phụ thuộc lần chụp sau */
+(function () {
+  if (typeof khoVeTrangThai !== "function") return;
+  const goc = khoVeTrangThai;
+  khoVeTrangThai = function () {
+    const r = goc.apply(this, arguments);
+    try { dvLuu(0); } catch (e) { }
+    try { dvVeCanhBao(); } catch (e) { }
+    return r;
+  };
+})();
+
+/* ---------- dải cảnh báo khi bị chặn ---------- */
+function dvVeCanhBao() {
+  let d = document.getElementById("dvChan");
+  if (!DV.chan) { if (d) d.remove(); return; }
+  if (!d) {
+    d = el("div"); d.id = "dvChan";
+    d.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:9997;padding:10px 14px;"
+      + "background:var(--critical);color:#fff;display:flex;gap:12px;align-items:center;"
+      + "flex-wrap:wrap;box-shadow:0 -2px 10px rgba(0,0,0,.18)";
+    document.body.appendChild(d);
+  }
+  d.innerHTML = "";
+  const chu = el("div"); chu.style.flex = "1";
+  if (DV.thieu) {
+    chu.innerHTML = "<b>Máy này đang thiếu dữ liệu so với kho — đã TẠM DỪNG việc đẩy lên.</b> "
+      + esc(DV.moTaThieu) + " Web đang tự kéo phần thiếu về; đừng tắt trang. "
+      + "<span style=\"opacity:.9\">Làm vậy để máy không ghi bản cũ đè lên kho.</span>";
+  } else {
+    chu.innerHTML = "<b>Có " + DV.soChan.toLocaleString("vi-VN")
+      + " bản ghi chờ đẩy lên kho — nhiều bất thường, em đã dừng lại.</b> "
+      + "Người thật không sửa ngần đó trong một lượt, nên gần như chắc là lỗi. "
+      + "<span style=\"opacity:.9\">Nếu chị vừa nhập một tệp lớn thì bấm “Vẫn đẩy”.</span>";
+  }
+  d.appendChild(chu);
+
+  if (!DV.thieu) {
+    const b = el("button", "btn", "Vẫn đẩy " + DV.soChan.toLocaleString("vi-VN") + " bản ghi");
+    b.style.cssText = "background:#fff;color:var(--critical);font-weight:700";
+    b.onclick = () => { DV.choPhep = 1; DV.chan = 0; dvVeCanhBao(); try { khoHen(); } catch (e) { } };
+    d.appendChild(b);
+  }
+  const bK = el("button", "btn", "Kéo lại từ kho");
+  bK.style.cssText = "background:transparent;color:#fff;border-color:rgba(255,255,255,.6)";
+  bK.onclick = () => dvKeoChoDu(1);
+  d.appendChild(bK);
+}
+
+/* ---------- C. so máy với kho, thiếu thì kéo cho đủ ---------- */
+async function dvSoatThieu() {
+  if (typeof khoSoKho !== "function" || typeof khoSoMay !== "function") return 0;
+  if (!khoBat || !khoBat()) return 0;
+  let K;
+  try { K = await khoSoKho(); } catch (e) { return 0; }     /* hỏi không được thì thôi, không chặn */
+  const may = khoSoMay(), thieu = [];
+  Object.keys(KHO_BANG_TEN).forEach(k => {
+    const m = may[k] || 0, t = (K.so && K.so[k]) || 0;
+    if (t - m > 0) thieu.push(KHO_BANG_TEN[k] + " thiếu " + (t - m).toLocaleString("vi-VN"));
+  });
+  DV.thieu = thieu.length ? 1 : 0;
+  DV.moTaThieu = thieu.join(" · ") + (thieu.length ? "." : "");
+  dvVeCanhBao();
+  return DV.thieu;
+}
+
+async function dvKeoChoDu(nguoiBam) {
+  if (DV.dangDoi) return;
+  DV.dangDoi = 1;
+  try {
+    for (let i = 0; i < 6; i++) {
+      try { await khoLay(0); } catch (e) { break; }
+      if (!await dvSoatThieu()) break;
+      await new Promise(r => setTimeout(r, 1200));
+    }
+    if (DV.thieu && typeof khoLayLaiTatCa === "function" && nguoiBam) {
+      await khoLayLaiTatCa();
+      await dvSoatThieu();
+    }
+    if (!DV.thieu) { khoChupLai(); try { render(); } catch (e) { } }
+  } finally { DV.dangDoi = 0; }
+}
+
+/* vào app xong thì soát ngay, thiếu thì tự kéo */
+(function () {
+  if (typeof khoVaoApp !== "function") return;
+  const goc = khoVaoApp;
+  khoVaoApp = async function () {
+    const r = await goc.apply(this, arguments);
+    setTimeout(async () => {
+      try { if (await dvSoatThieu()) dvKeoChoDu(0); } catch (e) { }
+    }, 1500);
+    return r;
+  };
+})();
+
+/* mỗi 10 phút soát lại một lần, phòng khi máy tụt lại giữa buổi */
+setInterval(() => {
+  if (document.hidden) return;
+  try { if (!DV.dangDoi) dvSoatThieu(); } catch (e) { }
+}, 10 * 60 * 1000);
+
+/* ---------- D. dải vàng "đẩy lên kho ngay" không hiện khi máy thiếu ---------- */
+(function () {
+  if (typeof moKhoChung !== "function") return;
+  const goc = moKhoChung;
+  moKhoChung = function () {
+    const r = goc.apply(this, arguments);
+    setTimeout(() => {
+      try {
+        if (!DV.thieu) return;
+        [...document.querySelectorAll(".warnbar, .nb-hint, .card")].forEach(x => {
+          if (!/chưa lên kho/i.test(x.textContent || "")) return;
+          const nut = [...x.querySelectorAll("button")].filter(b => /Đẩy lên kho ngay/i.test(b.textContent || ""));
+          if (!nut.length) return;
+          nut.forEach(b => b.remove());
+          const c = el("div", "sub");
+          c.style.cssText = "margin-top:6px;color:var(--critical);font-weight:600";
+          c.textContent = "Máy này đang THIẾU so với kho (" + DV.moTaThieu
+            + ") nên em đã bỏ nút đẩy ở đây. Phải kéo đủ về trước, bấm “⟳ Lấy LẠI TOÀN BỘ từ kho” bên dưới.";
+          x.appendChild(c);
+        });
+      } catch (e) { }
+    }, 120);
+    return r;
+  };
+})();
+
+/* ---------- nạp dấu vết đã lưu, ngay khi mở web ---------- */
+(function () {
+  try { dvNap(); } catch (e) { }
 })();
 </script></body></html>
