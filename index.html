@@ -490,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v169.0 · 12/10/2026";
+window.ALES_BAN = "v169.1 · 12/10/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -47253,7 +47253,34 @@ setInterval(() => {
 })();
 
 /* ---------- nạp dấu vết đã lưu, ngay khi mở web ---------- */
+var DV_COSAN = 0;
 (function () {
-  try { dvNap(); } catch (e) { }
+  try { DV_COSAN = dvNap(); } catch (e) { DV_COSAN = 0; }
+})();
+
+/* ---------- lần đầu chạy v169: chưa có dấu vết nào, đừng doạ người dùng ----------
+   Máy nào đang chạy bản cũ nâng lên v169 thì chưa có dấu vết lưu sẵn, nên mọi bản
+   ghi đều bị coi là "vừa đổi" và dải đỏ hiện ra — dù máy hoàn toàn bình thường.
+   Nếu máy KHÔNG thiếu gì so với kho thì dữ liệu nó đang giữ chính là dữ liệu kéo
+   từ kho về, coi như đã lưu rồi: tự chụp dấu vết một lượt, im lặng, khỏi phiền ai.
+   Máy nào thiếu thật thì vẫn đi đường cũ — chặn đẩy và kéo về. */
+(function () {
+  if (DV_COSAN) return;                      /* đã có dấu vết thì thôi */
+  if (typeof khoVaoApp !== "function") return;
+  const goc = khoVaoApp;
+  khoVaoApp = async function () {
+    const r = await goc.apply(this, arguments);
+    setTimeout(async () => {
+      try {
+        if (DV_COSAN) return;
+        let thieu = 1;
+        try { thieu = await dvSoatThieu(); } catch (e) { thieu = 1; }
+        if (thieu) return;                   /* thiếu thật → để chốt chặn làm việc */
+        khoChupLai();                        /* chụp im lặng, dải đỏ không kịp hiện */
+        DV_COSAN = 1;
+      } catch (e) { }
+    }, 900);
+    return r;
+  };
 })();
 </script></body></html>
