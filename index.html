@@ -490,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v167.0 · 12/10/2026";
+window.ALES_BAN = "v168.0 · 12/10/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -46846,4 +46846,153 @@ function nhNutChiSua(v, R) {
   };
   c.appendChild(b); c.appendChild(tien);
 }
+/* ============ v168 — MÀN ĐĂNG NHẬP TỰ HỎI KHO LẤY DANH SÁCH TÀI KHOẢN ============
+   Chị thêm Vi Như Quỳnh và Lã Hà Phương ở "Nhân sự & tài khoản". Trên máy chị hai
+   bạn ấy hiện ra ở ô chọn tên, nhưng trên MÁY CỦA CHÍNH HỌ thì không có tên để
+   chọn, nên không tài nào đăng nhập được.
+
+   Vì sao: ô chọn tên dựng từ danh sách nhân sự NẰM TRONG MÁY (USERS). Danh sách đó
+   KHÔNG nằm trong nhóm dữ liệu đồng bộ giữa các máy (CAUHINH_GOI), và web chỉ đi
+   hỏi kho lấy nhân sự SAU KHI đăng nhập thành công (bọc khoVaoApp). Thành ra con gà
+   quả trứng: muốn có tên thì phải vào được, muốn vào được thì phải có tên. Máy nào
+   chưa từng đăng nhập chỉ có danh sách gốc nằm sẵn trong index.html.
+
+   v168 chữa đúng chỗ đó:
+     1. Mở màn đăng nhập là web hỏi kho luôn (lệnh danhsachtk), rồi vẽ lại ô chọn tên.
+     2. Ô chọn tên vẽ THEO DANH SÁCH CỦA KHO, không theo danh sách trong máy. Vì chỉ
+        tài khoản có trên kho mới đăng nhập được — tên chỉ có trong máy mà hiện ra thì
+        chọn vào cũng bị kho chối "Tài khoản không tồn tại", đúng lỗi chị vừa gặp.
+        Cũng nhờ vậy mà hết cảnh một người hiện hai lần do máy và kho lệch mã.
+     3. Hai người trùng tên thì ghi kèm mã tài khoản cho khỏi chọn nhầm.
+     4. Hỏng mạng / kho bận thì GIỮ NGUYÊN danh sách trong máy như cũ, không chặn
+        đăng nhập, và có nút Thử lại.
+
+   CHỈ THÊM, không viết đè hàm cũ nào. Dùng lại nsLayTuKho() và dongBoNhanSu() có sẵn.
+
+   An toàn: lệnh "danhsachtk" trên kho KHÔNG đòi khoá quản trị và chỉ trả về
+   uid · tên · bộ phận · team · đang dùng hay không. Không mật khẩu, không muối,
+   không dữ liệu khách.
+   ====================================================================== */
+
+var DN = { dangLay: 0, xong: 0, loi: "", ds: null, daBocNhom: 0 };
+
+function dnONhom() { return document.getElementById("lgGroup"); }
+function dnOTen() { return document.getElementById("lgUser"); }
+
+function dnDangMo() {
+  const w = document.getElementById("login");
+  return !!(w && w.style.display !== "none" && dnOTen());
+}
+
+/* vẽ ô chọn tên THEO DANH SÁCH KHO; chưa có thì để nguyên cách cũ */
+function dnVeOTen() {
+  const usel = dnOTen(), gsel = dnONhom();
+  if (!usel || !gsel || !DN.ds || !DN.ds.length) return -1;
+  const g = (typeof LOGIN_GROUPS !== "undefined"
+    && LOGIN_GROUPS.find(x => x.id === gsel.value)) || null;
+  if (!g) return -1;
+
+  const dung = DN.ds.filter(x => x && x.uid && x.active
+    && g.roles.indexOf(String(x.vai || "sales")) >= 0);
+
+  /* trùng tên thì ghi kèm mã cho khỏi chọn nhầm */
+  const dem = {};
+  dung.forEach(x => { const t = String(x.ten || "").trim(); dem[t] = (dem[t] || 0) + 1; });
+
+  const cu = usel.value;
+  usel.innerHTML = "";
+  dung.forEach(x => {
+    let ten = String(x.ten || x.uid);
+    try { if (x.team) ten += " · " + teamOf(x.team).name; } catch (e) { }
+    if (dem[String(x.ten || "").trim()] > 1) ten += "  [" + x.uid + "]";
+    usel.appendChild(new Option(ten, x.uid));
+  });
+  if (cu) {
+    for (let i = 0; i < usel.options.length; i++) {
+      if (usel.options[i].value === cu) { usel.value = cu; break; }
+    }
+  }
+  return usel.options.length;
+}
+
+/* đổi Bộ phận thì vẽ lại theo danh sách kho (màn gốc vẽ theo danh sách máy) */
+function dnBocDoiNhom() {
+  const gsel = dnONhom();
+  if (!gsel || gsel._v168) return;
+  gsel._v168 = 1;
+  const goc = gsel.onchange;
+  gsel.onchange = function (e) {
+    if (typeof goc === "function") { try { goc.call(this, e); } catch (x) { } }
+    try { dnVeOTen(); } catch (x) { }
+  };
+}
+
+function dnBao(html) {
+  const usel = dnOTen();
+  if (!usel || !usel.parentNode) return null;
+  let k = document.getElementById("dnBao");
+  if (!k) {
+    k = el("div"); k.id = "dnBao";
+    k.style.cssText = "font-size:12px;color:var(--muted);margin-top:5px;line-height:1.45";
+    usel.parentNode.appendChild(k);
+  }
+  if (html !== undefined) k.innerHTML = html;
+  return k;
+}
+
+async function dnLayDs(ep) {
+  if (DN.dangLay) return;
+  if (DN.xong && !ep) return;                      /* lấy được rồi thì khỏi hỏi lại */
+  if (typeof nsLayTuKho !== "function" || typeof dongBoNhanSu !== "function") return;
+  if (!dnDangMo()) return;
+  DN.dangLay = 1;
+  dnBao("Đang lấy danh sách tài khoản từ kho…");
+  try {
+    const ds = await nsLayTuKho(0);
+    if (!dnDangMo()) return;                       /* vào được rồi thì thôi */
+    if (ds && ds.length) {
+      DN.ds = ds;
+      try { dongBoNhanSu(ds); } catch (e) { }      /* để phần còn lại của web biết tên */
+      dnBocDoiNhom();
+      const n = dnVeOTen();
+      DN.xong = 1; DN.loi = "";
+      dnBao('<span style="color:var(--good-ink)">✔</span> Danh sách tài khoản lấy từ kho — '
+        + ds.length + " người"
+        + (n > 0 ? ", bộ phận này có " + n + " tài khoản" : ", bộ phận này chưa có ai") + ".");
+    } else {
+      DN.ds = null;
+      dnBao("Kho chưa trả về tài khoản nào — đang dùng danh sách lưu trong máy này.");
+    }
+  } catch (e) {
+    if (!dnDangMo()) return;
+    DN.ds = null;
+    DN.loi = (e && e.message) || String(e);
+    dnBao("Chưa hỏi được kho nên đang dùng danh sách lưu trong máy này. "
+      + '<a href="#" id="dnThuLai" style="color:var(--brand)">Thử lại</a>'
+      + '<div style="opacity:.75;margin-top:2px">' + esc(DN.loi) + "</div>");
+    const a = document.getElementById("dnThuLai");
+    if (a) a.onclick = ev => { ev.preventDefault(); DN.dangLay = 0; dnLayDs(1); };
+  } finally { DN.dangLay = 0; }
+}
+
+/* bọc màn đăng nhập: vẽ lại là hỏi kho (lúc hết phiên, lúc bấm Đăng xuất…) */
+(function () {
+  if (typeof loginScreen !== "function") return;
+  const goc = loginScreen;
+  loginScreen = function () {
+    const r = goc.apply(this, arguments);
+    try { DN.dangLay = 0; DN.xong = 0; setTimeout(() => dnLayDs(1), 50); } catch (e) { }
+    return r;
+  };
+})();
+
+/* lần mở web đầu tiên, màn đăng nhập đã được vẽ TRƯỚC khi lớp bọc trên kịp gắn
+   (base.js gọi loginScreen() ngay lúc nạp) — nên phải tự gọi thêm một nhịp. */
+(function () {
+  const thu = () => { try { if (dnDangMo()) dnLayDs(0); } catch (e) { } };
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", () => setTimeout(thu, 150));
+  else setTimeout(thu, 150);
+  setTimeout(thu, 1200);                           /* màn có thể bị vẽ lại muộn */
+})();
 </script></body></html>
