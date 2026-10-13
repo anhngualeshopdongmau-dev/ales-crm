@@ -490,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v176.0 · 13/10/2026";
+window.ALES_BAN = "v179.0 · 13/10/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -49074,6 +49074,556 @@ function stVeTrongKho(hop) {
         if (w) stVeTrongKho(w);
       } catch (e) { }
     }, 150);
+    return r;
+  };
+})();
+/* ====== v177 — SỬA TÊN & SỐ ĐIỆN THOẠI NGAY TRONG BẢNG HỒ SƠ KHÁCH ======
+
+   v174/v175 em đã làm phần sửa tên · SĐT · SĐT 2, nhưng gắn vào màn hồ sơ khách
+   KIỂU CŨ (cửa sổ lớn giữa màn hình). Màn mọi người dùng hằng ngày là BẢNG TRƯỢT
+   BÊN PHẢI — thẻ "Thông tin · Chăm sóc · Test · Chốt đơn" — thì chưa có.
+   Nên chị mở ra không thấy nút nào. Lỗi của em.
+
+   v177 gắn vào đúng chỗ đó, và làm theo kiểu dùng chung được mọi nơi:
+
+   · Thêm dòng "Điện thoại 2" ngay dưới dòng Điện thoại.
+   · Thêm nút "✏ Sửa tên & số điện thoại" ngay dưới bảng thông tin.
+   · Bấm vào mở một khung sửa gọn giữa màn hình, bốn ô:
+       Họ tên học viên · Người đại diện · Số điện thoại · Số điện thoại 2
+   · Giữ nguyên mọi chốt chặn đã làm ở v174/v175:
+       số sai không cho lưu · số 2 trùng số 1 thì chặn · trùng số của khách khác
+       thì chặn và nói rõ của ai · mọi thay đổi ghi vào lịch sử chăm sóc kèm giờ.
+   ====================================================================== */
+
+function sxDong() {
+  const c = document.getElementById("sxSua");
+  if (c) c.remove();
+}
+
+function sxBao(hop, chu, tot) {
+  let b = hop.querySelector(".sxBao");
+  if (!b) {
+    b = el("div", "sxBao");
+    b.style.cssText = "margin:2px 0 10px;font-size:13px;line-height:1.5";
+    hop.insertBefore(b, hop.querySelector(".sxNut"));
+  }
+  b.style.color = tot ? "var(--good-ink)" : "var(--critical)";
+  b.innerHTML = chu;
+}
+
+function sxMoSua(k, veLai) {
+  if (!k) return;
+  sxDong();
+  const nen = el("div"); nen.id = "sxSua";
+  nen.style.cssText = "position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.42);"
+    + "display:flex;align-items:center;justify-content:center;padding:18px";
+  const h = el("div");
+  h.style.cssText = "max-width:520px;width:100%;max-height:88vh;overflow:auto;"
+    + "background:var(--panel);color:var(--text-primary);border:1px solid var(--line);"
+    + "border-radius:12px;padding:18px 20px;box-shadow:0 18px 48px rgba(0,0,0,.28)";
+
+  const tieu = el("div");
+  tieu.style.cssText = "font-weight:700;font-size:16px;margin-bottom:3px";
+  tieu.textContent = "Sửa thông tin khách";
+  h.appendChild(tieu);
+  h.appendChild(el("div", "sub", esc(k.id) + " · " + esc(k.hoTenHV || "")));
+
+  const o = (nhan, gt, ph, goi) => {
+    const d = el("div"); d.style.margin = "12px 0 0";
+    d.appendChild(el("div", "sub", nhan));
+    const i = el("input"); i.type = "text"; i.value = gt == null ? "" : gt;
+    if (ph) i.placeholder = ph;
+    if (goi) i.className = goi;
+    i.style.cssText = "width:100%;padding:8px 10px;margin-top:3px;border-radius:8px;"
+      + "border:1px solid var(--border);background:var(--panel);color:var(--text-primary);font:inherit";
+    d.appendChild(i); h.appendChild(d);
+    return i;
+  };
+  const iTen = o("Họ tên học viên", k.hoTenHV);
+  const iPH = o("Người đại diện (phụ huynh)", k.hoTenPH, "để trống nếu không có");
+  const iSo1 = o("Số điện thoại", k.phone);
+  const iSo2 = o("Số điện thoại 2 — thông tin liên hệ thêm", k.sdt2, "để trống nếu khách chỉ có một số");
+  h.appendChild(el("div", "sub",
+    "<div style=\"margin-top:8px\">Số gõ kiểu nào cũng được — web tự dọn dấu cách và đổi "
+    + "<b>+84</b> thành <b>0</b>. Mọi thay đổi đều ghi vào lịch sử chăm sóc của khách.</div>"));
+
+  const hang = el("div", "sxNut");
+  hang.style.cssText = "display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap";
+  const bH = el("button", "btn sm", "Huỷ");
+  bH.onclick = () => sxDong();
+  const bL = el("button", "btn pri sm", "💾 Lưu");
+  bL.onclick = () => {
+    const ten = String(iTen.value || "").trim();
+    if (!ten) { sxBao(h, "Chưa nhập họ tên học viên."); return; }
+
+    const s1 = stHopLe(iSo1.value);
+    if (!s1) { sxBao(h, "Số điện thoại chưa hợp lệ — phải 9 đến 11 chữ số."); return; }
+
+    const v2 = String(iSo2.value || "").trim();
+    let s2 = "";
+    if (v2) {
+      s2 = stHopLe(v2);
+      if (!s2) { sxBao(h, "Số điện thoại 2 chưa hợp lệ — phải 9 đến 11 chữ số."); return; }
+      if (sdtGon(s1) === sdtGon(s2)) {
+        sxBao(h, "Số 1 và số 2 đang là <b>cùng một số</b>. Sửa lại, hoặc để trống ô số 2."); return;
+      }
+    }
+
+    /* trùng với số của khách khác — chặn, nói rõ của ai */
+    for (const s of [s1, s2].filter(Boolean)) {
+      const t = hsTimTrung(s, k.id);
+      if (t) {
+        sxBao(h, "Số <b>" + esc(s) + "</b> đang là số của khách <b>"
+          + esc(t.hoTenHV || t.id) + "</b> (" + esc(t.id) + " · "
+          + esc(userOf(t.owner).name) + "). Không đặt trùng được.");
+        return;
+      }
+    }
+
+    const doi = [];
+    if (String(k.hoTenHV || "") !== ten) doi.push("họ tên: " + (k.hoTenHV || "(trống)") + " → " + ten);
+    const ph = String(iPH.value || "").trim();
+    if (String(k.hoTenPH || "") !== ph) doi.push("người đại diện: " + (k.hoTenPH || "(trống)") + " → " + (ph || "(trống)"));
+    if (String(k.phone || "") !== s1) doi.push("số điện thoại: " + (k.phone || "(trống)") + " → " + s1);
+
+    if (!doi.length && String(k.sdt2 || "") === s2) { sxDong(); return; }
+
+    k.hoTenHV = ten; k.hoTenPH = ph; k.phone = s1;
+    if (doi.length) {
+      k.acts = k.acts || [];
+      k.acts.push({
+        t: iso(TODAY), gio: (typeof gnGio === "function" ? gnGio() : ""), type: "sys",
+        text: "Sửa thông tin khách — " + doi.join(" · "), by: S.me
+      });
+    }
+    try { hsGhiSo2(k, s2); } catch (e) { k.sdt2 = s2; }   /* hàm này tự ghi lịch sử và persist */
+    try { if (typeof dataQuenCache === "function") dataQuenCache(); } catch (e) { }
+    persist();
+    sxDong();
+    toast("Đã lưu thông tin khách");
+    try { render(); } catch (e) { }
+    try { if (veLai) veLai(); } catch (e) { }
+  };
+  hang.appendChild(bH); hang.appendChild(bL);
+  h.appendChild(hang);
+
+  nen.appendChild(h);
+  nen.onclick = e => { if (e.target === nen) sxDong(); };
+  document.body.appendChild(nen);
+  setTimeout(() => { try { iTen.focus(); } catch (e) { } }, 40);
+}
+
+/* ---------- gắn vào bảng trượt bên phải (thẻ Thông tin) ---------- */
+(function () {
+  if (typeof drTabInfo !== "function") return;
+  const goc = drTabInfo;
+  drTabInfo = function (body, k, u) {
+    const r = goc.apply(this, arguments);
+    try {
+      const kv = body.querySelector(".kv");
+      if (!kv || body.querySelector(".sxMo")) return r;
+
+      /* chèn dòng "Điện thoại 2" ngay sau dòng Điện thoại */
+      const cac = [].slice.call(kv.children);
+      let vt = -1;
+      for (let i = 0; i < cac.length; i++) {
+        if (cac[i].classList.contains("k") && /^Điện thoại$/.test((cac[i].textContent || "").trim())) { vt = i; break; }
+      }
+      if (vt >= 0) {
+        const nhan = el("div", "k"); nhan.textContent = "Điện thoại 2";
+        const gt = el("div", "tnum");
+        gt.innerHTML = k.sdt2
+          ? "<b>" + esc(k.sdt2) + "</b>"
+          : '<span class="sub">—</span>';
+        const sau = cac[vt + 2] || null;      /* nhãn + ô giá trị = 2 phần tử */
+        kv.insertBefore(nhan, sau);
+        kv.insertBefore(gt, sau);
+      }
+
+      const hang = el("div", "row sxMo");
+      hang.style.cssText = "gap:8px;margin:10px 0 0;flex-wrap:wrap";
+      const b = el("button", "btn sm", "✏ Sửa tên & số điện thoại");
+      b.onclick = e => {
+        e.stopPropagation();
+        sxMoSua(k, () => { try { openKH(k.id, "info"); } catch (e2) { } });
+      };
+      hang.appendChild(b);
+      hang.appendChild(el("span", "sub",
+        "Khách để nhầm số thì sửa ở đây — web ghi lại ai sửa, từ số nào sang số nào."));
+      kv.parentNode.insertBefore(hang, kv.nextSibling);
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* Màn hồ sơ kiểu cũ (v174) GIỮ NGUYÊN ô sửa tại chỗ của nó — em KHÔNG đổi sang
+   khung này nữa. Lý do: đường đó đã chạy và đã có bộ kiểm riêng; đổi sang khung
+   mới chỉ để cho "gọn" là đúng loại việc đẻ ra lỗi. Hai chỗ dùng chung đúng các
+   hàm kiểm tra (stHopLe · hsTimTrung · hsGhiSo2) nên luật không thể lệch nhau. */
+/* ====== v178 — BỐN LỖI CỦA HÔM NAY ======
+
+   Chiều nay chị mất gần hai tiếng vì bốn chỗ em làm hỏng. v178 vá cả bốn.
+
+   1. DẢI ĐỎ "có N bản ghi chờ đẩy" CỨ QUAY LẠI — và nó không chỉ là phiền.
+      Trong lúc dải đó còn, chốt chặn GIỮ LẠI toàn bộ hồ sơ khách, máy không gửi
+      gì lên kho. Chị sửa gì thì máy khác không thấy.
+      Gốc bệnh: web ghi "dấu vết đã lưu" bằng localStorage — chỗ đó chỉ vài MB và
+      đã gần đầy vì dữ liệu cũ. Gần 9.000 khách thì ghi không nổi, mà lệnh ghi lại
+      nằm trong try/catch im lặng nên không ai biết. Mở lại trang là dấu vết trống,
+      web tưởng chưa gửi gì cả.
+      → Chuyển hẳn sang IndexedDB (chỗ web vẫn chứa 9.000 khách, rộng gấp nhiều
+        lần). localStorage chỉ còn là bản dự phòng. Ghi hỏng thì NÓI RA.
+
+   2. TỰ-VÀO-LẠI KHÔNG CÓ GIỜ CHỜ — kho chậm một nhịp là màn đăng nhập treo cứng
+      ở "Đang vào lại…", nút bị khoá, bấm không ăn, gõ khoá quản trị cũng vô ích.
+      → Quá 15 giây thì bỏ cuộc, nhả nút ra, nói rõ "mời gõ mật khẩu".
+
+   3. DẢI ĐỎ HIỆN SỐ CŨ — máy đã kéo về 8.896/8.944 mà vẫn kêu "thiếu 5.444",
+      vì nó chỉ soát lại 10 phút một lần.
+      → Kéo xong một mẻ là soát lại ngay.
+
+   4. NÚT "BẬT ĐỒNG BỘ" VIẾT NGƯỢC — nút ghi việc sắp làm chứ không ghi tình
+      trạng, nên nhìn vào không biết đang bật hay tắt.
+      → Ghi thẳng: "Đồng bộ: ĐANG BẬT — bấm để tắt".
+   ====================================================================== */
+
+/* ============ 1. dấu vết đã lưu — chuyển sang IndexedDB ============ */
+
+var DX = {
+  KHOA: "ales_dauvet",     /* khoá trong IndexedDB */
+  hen: null, dangGhi: 0, canGhi: 0,
+  daNap: -1, loi: "", lucGhi: 0, soGhi: 0,
+  TOI_THIEU: 50          /* máy ít hơn ngần này bản ghi thì khỏi soát, đẩy cũng nhẹ */
+};
+
+/* nhả chốt "đang vào lại" — ở đây mới sửa được biến đó (cùng một tầng mã) */
+function vlNhaChot() { try { _dangVaoLai = 0; } catch (e) { } }
+
+function dxDemVet() {
+  let n = 0;
+  try { Object.keys(khoDauVet).forEach(t => { n += Object.keys(khoDauVet[t] || {}).length; }); } catch (e) { }
+  return n;
+}
+
+async function dxGhiNgay() {
+  if (DX.dangGhi) { DX.canGhi = 1; return; }
+  DX.dangGhi = 1;
+  try {
+    const ban = {};
+    Object.keys(khoDauVet).forEach(t => { ban[t] = khoDauVet[t]; });
+    await idbGhiNhieu({ [DX.KHOA]: ban });
+    DX.loi = ""; DX.lucGhi = Date.now(); DX.soGhi = dxDemVet();
+  } catch (e) {
+    DX.loi = e.message || String(e);
+  } finally {
+    DX.dangGhi = 0;
+    if (DX.canGhi) { DX.canGhi = 0; setTimeout(dxGhiNgay, 300); }
+  }
+}
+
+async function dxNap() {
+  try {
+    const o = await idbDoc(DX.KHOA);
+    if (!o || typeof o !== "object") { DX.daNap = 0; return 0; }
+    let n = 0;
+    Object.keys(khoDauVet).forEach(t => {
+      if (o[t] && typeof o[t] === "object") {
+        const soCu = Object.keys(khoDauVet[t] || {}).length;
+        const soMoi = Object.keys(o[t]).length;
+        /* bản trong IndexedDB đầy đủ hơn thì dùng nó */
+        if (soMoi >= soCu) { khoDauVet[t] = o[t]; n += soMoi; }
+      }
+    });
+    DX.daNap = n;
+    return n;
+  } catch (e) { DX.loi = e.message || String(e); DX.daNap = 0; return 0; }
+}
+
+/* thay hẳn chỗ ghi: IndexedDB là chính, localStorage chỉ là dự phòng */
+function dvLuu(ep) {
+  const nay = Date.now();
+  if (!ep && nay - DV.lucLuu < 4000) return;
+  DV.lucLuu = nay;
+  /* dự phòng — hỏng cũng không sao, IndexedDB mới là chỗ thật */
+  try { localStorage.setItem(DV.KEY, JSON.stringify(khoDauVet)); } catch (e) { }
+  if (DX.hen) clearTimeout(DX.hen);
+  if (ep) { dxGhiNgay(); return; }
+  DX.hen = setTimeout(() => { DX.hen = null; dxGhiNgay(); }, 1200);
+}
+
+/* nạp dấu vết TRƯỚC khi vào app, để không bị tưởng nhầm là chưa gửi gì */
+(function () {
+  if (typeof khoVaoApp !== "function") return;
+  const goc = khoVaoApp;
+  khoVaoApp = async function () {
+    try { await dxNap(); } catch (e) { }
+    try { await dxSoatLanDau(); } catch (e) { }
+    return goc.apply(this, arguments);
+  };
+})();
+
+/* Lần đầu chạy bản này, IndexedDB chưa có dấu vết nào mà máy thì đầy dữ liệu —
+   nếu cứ để vậy thì dải đỏ lại hiện oan. Chỉ chụp lại dấu vết khi CHẮC CHẮN
+   máy không thiếu so với kho; thiếu thì tuyệt đối không chụp. */
+async function dxSoatLanDau() {
+  try {
+    if (DX.daNap > 0) return 0;                       /* đã có dấu vết thật rồi */
+    if (!KH || KH.length < DX.TOI_THIEU) return 0;    /* máy ít dữ liệu thì kệ, đẩy cũng nhẹ */
+    if (dxDemVet() >= KH.length) return 0;            /* dấu vết đã đủ */
+    if (typeof khoBat !== "function" || !khoBat()) return 0;
+    let K;
+    try { K = await khoSoKho(); } catch (e) { return 0; }   /* hỏi không được thì thôi */
+    const may = khoSoMay();
+    const thieu = Object.keys(KHO_BANG_TEN).some(k => ((K.so && K.so[k]) || 0) > (may[k] || 0));
+    if (thieu) return 0;                              /* máy thiếu → KHÔNG chụp, giữ chốt chặn */
+    khoChupLai();                                     /* máy đủ → chụp lại, dải đỏ không hiện oan */
+    await dxGhiNgay();
+    return 1;
+  } catch (e) { return 0; }
+}
+
+/* ============ 2. tự-vào-lại phải có giờ chờ ============ */
+
+var VL = { HAN: 15000, quaGio: 0 };
+
+(function () {
+  if (typeof vaoLaiTuDong !== "function") return;
+  const goc = vaoLaiTuDong;
+  vaoLaiTuDong = function () {
+    const that = this, arg = arguments;
+    return new Promise(resolve => {
+      let xong = 0;
+      const dong = setTimeout(() => {
+        if (xong) return;
+        xong = 1; VL.quaGio = 1;
+        vlNhaChot();                                 /* nhả chốt để người ta tự gõ được */
+        try { vlBaoQuaGio(); } catch (e) { }
+        resolve(false);
+      }, VL.HAN);
+      Promise.resolve().then(() => goc.apply(that, arg)).then(r => {
+        if (xong) return;
+        xong = 1; clearTimeout(dong); resolve(r);
+      }, () => {
+        if (xong) return;
+        xong = 1; clearTimeout(dong); resolve(false);
+      });
+    });
+  };
+})();
+
+function vlBaoQuaGio() {
+  const nut = document.getElementById("lgBtn");
+  if (nut) { nut.disabled = false; nut.textContent = "Đăng nhập"; }
+  let d = document.getElementById("vlBao");
+  if (!d) {
+    d = el("div"); d.id = "vlBao";
+    d.style.cssText = "margin:8px 0;padding:9px 11px;border-radius:8px;font-size:13px;line-height:1.5;"
+      + "border:1px solid var(--critical);color:var(--critical)";
+    if (nut && nut.parentNode) nut.parentNode.insertBefore(d, nut);
+  }
+  d.innerHTML = "<b>Không tự vào lại được</b> — kho chưa trả lời sau 15 giây. "
+    + "Chị gõ mật khẩu (hoặc khoá quản trị) vào ô trên rồi bấm <b>Đăng nhập</b>.";
+}
+
+/* ============ 3. kéo xong một mẻ là soát lại ngay ============ */
+
+var SL = { lucSoat: 0 };
+
+(function () {
+  if (typeof khoLay !== "function" || typeof dvSoatThieu !== "function") return;
+  const goc = khoLay;
+  khoLay = async function () {
+    const r = await goc.apply(this, arguments);
+    try {
+      if (DV && DV.thieu && Date.now() - SL.lucSoat > 20000) {
+        SL.lucSoat = Date.now();
+        await dvSoatThieu();                 /* hết thiếu thì dải đỏ tự tắt ngay */
+      }
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* ============ 4. nút đồng bộ nói rõ tình trạng ============ */
+
+(function () {
+  if (typeof moKhoChung !== "function") return;
+  const goc = moKhoChung;
+  moKhoChung = function () {
+    const r = goc.apply(this, arguments);
+    setTimeout(() => {
+      try {
+        const w = document.querySelector("#cotwrap.on .cot-b") || document.querySelector(".cot-b");
+        if (!w) return;
+        const b = [].slice.call(w.querySelectorAll("button"))
+          .find(x => /^(Bật đồng bộ|Tạm ngắt đồng bộ)$/.test((x.textContent || "").trim()));
+        if (!b || b._v178) return;
+        b._v178 = 1;
+        const ve = () => {
+          const bat = (typeof khoBat === "function") ? khoBat() : !!KHO.bat;
+          b.textContent = bat ? "Đồng bộ: ĐANG BẬT — bấm để tắt" : "Đồng bộ: ĐANG TẮT — bấm để bật";
+          b.style.borderColor = bat ? "var(--good-ink)" : "var(--critical)";
+          b.style.color = bat ? "var(--good-ink)" : "var(--critical)";
+        };
+        ve();
+        const nhip = setInterval(() => {
+          if (!document.body.contains(b)) { clearInterval(nhip); return; }
+          ve();
+        }, 1000);
+      } catch (e) { }
+    }, 200);
+    return r;
+  };
+})();
+
+/* ---- dòng soi dấu vết trong màn Kho dữ liệu chung, để sau này còn tra ---- */
+(function () {
+  if (typeof moKhoChung !== "function") return;
+  const goc = moKhoChung;
+  moKhoChung = function () {
+    const r = goc.apply(this, arguments);
+    setTimeout(() => {
+      try {
+        const w = document.querySelector("#cotwrap.on .cot-b") || document.querySelector(".cot-b");
+        if (!w || w.querySelector("#dxSoi")) return;
+        const d = el("div"); d.id = "dxSoi";
+        d.style.cssText = "margin:10px 0 0;padding:8px 10px;border-radius:8px;"
+          + "border:1px solid var(--line);font-size:12.5px;line-height:1.5";
+        const ve = () => {
+          if (!document.body.contains(d)) return 0;
+          d.innerHTML = "<b>Dấu vết đã lưu</b> (để biết cái gì đã lên kho): "
+            + "đang nhớ <b>" + dxDemVet().toLocaleString("vi-VN") + "</b> bản ghi"
+            + (DX.lucGhi ? " · ghi xuống máy lúc " + (typeof dmGio === "function" ? dmGio(DX.lucGhi) : "") : "")
+            + (DX.loi
+              ? ' · <span style="color:var(--critical)">ghi hỏng: ' + esc(DX.loi) + "</span>"
+              : ' · <span style="color:var(--good-ink)">ghi tốt</span>');
+          return 1;
+        };
+        w.appendChild(d); ve();
+        const nhip = setInterval(() => { if (!ve()) clearInterval(nhip); }, 2000);
+      } catch (e) { }
+    }, 260);
+    return r;
+  };
+})();
+/* ====== v179 — SỬA LỊCH TESTER MÀ MÁY KHÁC KHÔNG THẤY ======
+
+   Chị sửa lịch Tester, màn hình hiện đúng, nhưng máy nhân sự không thấy gì, và
+   tải lại trang là mất. Đây KHÔNG phải lỗi đồng bộ — là lỗi trong mã.
+
+   Trong base.js có:
+
+       const LICHTS = DB.LICHTS, NGHI = DB.NGHI;
+
+   Còn khi kho gửi cấu hình về thì web làm:
+
+       DB[x.id] = x.d;          // thay hẳn bằng một đối tượng MỚI
+
+   `LICHTS` khai bằng `const` nên không trỏ lại được — nó vẫn ôm đối tượng CŨ đã
+   bị bỏ rơi. Từ giây phút đó:
+
+     · Màn Lịch tester đọc `LICHTS` → đối tượng cũ → CHỊ VẪN THẤY MÌNH SỬA ĐƯỢC.
+     · persist() lưu `DB.LICHTS`   → đối tượng mới → KHÔNG lưu cái chị vừa sửa.
+     · khoCauHinh() đẩy `DB.LICHTS` → đối tượng mới → KHÔNG đẩy lên kho.
+
+   Nên: chị thấy, máy khác không thấy, F5 là mất. Đúng y như chị mô tả.
+
+   Không chỉ lịch Tester. Cùng một lỗi với:
+       LICHTS · NGHI (báo nghỉ) · BOLOC · BOLOC_DON (bộ lọc đã lưu) · COTS_DON
+       (cột hiển thị đơn hàng)
+   — tất cả đều khai bằng `const`.
+
+   Hai cái PERM và RULE thoát nạn vì khai bằng `let` và có dòng trỏ lại; năm cái
+   trên thì bị bỏ quên.
+
+   CÁCH SỬA: không đi trỏ lại từng cái (const không trỏ lại được), mà GIỮ NGUYÊN
+   ĐÚNG MỘT ĐỐI TƯỢNG — khi kho gửi bản mới về thì đổ nội dung vào chính đối tượng
+   cũ thay vì thay đối tượng. Làm vậy mọi tên gọi tắt đều còn đúng, kể cả những
+   tên sau này có thêm.
+   ====================================================================== */
+
+var GN = { lanSua: 0, danhSach: [] };
+
+/* chép nội dung của `moi` vào ĐÚNG đối tượng `cu`, giữ nguyên danh tính */
+function gnDoVao(cu, moi) {
+  if (Array.isArray(cu) && Array.isArray(moi)) {
+    cu.length = 0;
+    for (let i = 0; i < moi.length; i++) cu.push(moi[i]);
+    return 1;
+  }
+  if (cu && typeof cu === "object" && !Array.isArray(cu)
+    && moi && typeof moi === "object" && !Array.isArray(moi)) {
+    Object.keys(cu).forEach(k => { delete cu[k]; });
+    Object.keys(moi).forEach(k => { cu[k] = moi[k]; });
+    return 1;
+  }
+  return 0;
+}
+
+(function () {
+  if (typeof khoNhapVao !== "function") return;
+  const goc = khoNhapVao;
+  khoNhapVao = function (j) {
+    /* nhớ đối tượng ĐANG dùng của từng mục cấu hình sắp bị thay */
+    const cu = {};
+    try {
+      ((j && j.cauhinh) || []).forEach(x => {
+        if (!x || x.id == null) return;
+        const k = String(x.manh || x.id).split("#")[0];
+        if (!(k in cu)) {
+          const o = DB[k];
+          if (o && typeof o === "object") cu[k] = o;
+        }
+      });
+    } catch (e) { }
+
+    const r = goc.apply(this, arguments);
+
+    /* kho vừa thay bằng đối tượng mới → đổ ngược vào đối tượng cũ, giữ danh tính */
+    try {
+      Object.keys(cu).forEach(k => {
+        const o = cu[k], m = DB[k];
+        if (!o || o === m) return;                 /* không bị thay thì thôi */
+        if (gnDoVao(o, m)) {
+          DB[k] = o;
+          GN.lanSua++;
+          if (GN.danhSach.indexOf(k) < 0) GN.danhSach.push(k);
+        }
+      });
+      /* mấy tên khai bằng let thì vẫn trỏ lại cho chắc, y như bản gốc vẫn làm */
+      if (DB.PERM) PERM = DB.PERM;
+      if (DB.RULE) RULE = DB.RULE;
+      if (DB.INBOX) INBOX = DB.INBOX;
+    } catch (e) { }
+    return r;
+  };
+})();
+
+/* ---------- dòng soi trong màn Kho dữ liệu chung ---------- */
+(function () {
+  if (typeof moKhoChung !== "function") return;
+  const goc = moKhoChung;
+  moKhoChung = function () {
+    const r = goc.apply(this, arguments);
+    setTimeout(() => {
+      try {
+        const w = document.querySelector("#cotwrap.on .cot-b") || document.querySelector(".cot-b");
+        if (!w || w.querySelector("#gnSoi")) return;
+        const d = el("div"); d.id = "gnSoi";
+        d.style.cssText = "margin:8px 0 0;padding:8px 10px;border-radius:8px;"
+          + "border:1px solid var(--line);font-size:12.5px;line-height:1.5";
+        const ve = () => {
+          if (!document.body.contains(d)) return 0;
+          d.innerHTML = "<b>Giữ nguyên bảng cấu hình</b> (lịch tester · báo nghỉ · bộ lọc · cột đơn hàng): "
+            + (GN.lanSua
+              ? "đã giữ lại <b>" + GN.lanSua + "</b> lượt · " + esc(GN.danhSach.join(" · "))
+              : "chưa có lượt nào kho gửi về");
+          return 1;
+        };
+        w.appendChild(d); ve();
+        const nhip = setInterval(() => { if (!ve()) clearInterval(nhip); }, 3000);
+      } catch (e) { }
+    }, 300);
     return r;
   };
 })();
