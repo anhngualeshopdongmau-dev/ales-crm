@@ -490,7 +490,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
    Bài học 12/09: màn đăng nhập bị ẩn sẵn nên hễ javascript chết là trắng trang, và
    không ai biết lỗi gì. Từ đây: màn đăng nhập hiện sẵn trong CSS, và mọi lỗi đều
    được viết thẳng lên màn hình để chụp gửi đi, không phải mở F12. */
-window.ALES_BAN = "v180.0 · 14/10/2026";
+window.ALES_BAN = "v181.0 · 14/10/2026";
 (function () {
   try { document.getElementById("aloBan").textContent = "Bản " + window.ALES_BAN; } catch (e) { }
   var soLoi = 0;
@@ -49804,6 +49804,206 @@ try {
       } catch (e) { }
     }, 300);
     return r;
+  };
+})();
+/* ====== v181 — BẢNG HỌC PHÍ MỚI 2026 (tệp "Bảng phí 2026 2.xlsx", chị gửi 14/10) ======
+
+   Yêu cầu: thêm học phí mới để sale chọn khi lập phiếu đăng ký → tạo bill, xuất ảnh,
+   gửi HĐ tự động. HP CŨ VẪN GIỮ. Khoá học, đầu ra, cam kết KHÔNG đổi — chỉ đổi
+   "học phí gốc" và "học phí ưu đãi".
+
+   Đối chiếu bảng với web:  web.uudai = cột "Học phí cũ" (khớp từng mã), nên
+       Học phí mới  → uudai (giá sau ưu đãi, in vào HĐ là "Mức học phí sau giảm")
+       Học phí gốc  → goc   (in vào HĐ là "Mức học phí gốc")
+
+   Chị chốt 14/10:
+     · dòng cuối không mã (80tr → 96tr, gốc 320tr) = MI7
+     · 4 mã chưa có trên web → THÊM khoá mới: NPGVVN_70 · VP70_VK · VPK1H_S96 · MI4
+     · khoá có trên web mà bảng không có → THEO KHOÁ ANH EM (cùng giá cũ, cùng số giờ);
+       không có anh em thì giữ giá cũ (chỉ còn I47)
+     · đơn mới mặc định HP MỚI, sale đổi được sang HP CŨ
+
+   Cách làm (chỉ THÊM và BỌC):
+     · Mỗi khoá giữ giá cũ ở gocCu/uudaiCu; goc/uudai mang giá MỚI → mọi chỗ đang
+       đọc C.goc/C.uudai (ô chọn khoá, gợi ý báo giá, tạo đơn) tự ra giá mới.
+     · Đơn đã lập KHÔNG đổi: đơn lưu sẵn giaGoc/doanhThu riêng, HĐ và bill in từ đó.
+     · Đơn ghi thêm bangPhi = "moi" | "cu". Đơn cũ không có thì suy theo giá đang lưu.
+     · Ô "Gói học đăng ký" (cả bảng trượt lẫn cửa sổ lớn) có thêm nút chọn bảng.
+       KHÔNG chèn dòng mới vào phiếu: v175 khoá ô theo VỊ TRÍ.
+   ====================================================================== */
+
+var BANG_PHI_TEN = { moi: "HP mới 2026", cu: "HP cũ" };
+
+/* giá mới theo bảng của chị: [ưu đãi, gốc] */
+var PHI_2026 = {
+  VP70: [15.5e6, 52e6], VP105: [22.5e6, 75e6], NPGVVN_70: [15.5e6, 52e6], VP70_VK: [15.5e6, 52e6],
+  VPK1H_S50: [11.5e6, 38e6], VPK1H_M50: [11.5e6, 38e6], VPK1H_F50: [11.5e6, 38e6],
+  VPK1H_S96: [18.9e6, 63e6], VPK1H_M96: [18.9e6, 63e6], VPK1H_F96: [18.9e6, 63e6],
+  I04: [21.5e6, 72e6], I05: [34e6, 113e6], I06: [54e6, 180e6], I07: [79e6, 263e6],
+  I45: [21.5e6, 72e6], I46: [42e6, 140e6], I56: [21.5e6, 72e6], I57: [48e6, 160e6], I67: [27e6, 90e6],
+  MI42: [29e6, 96e6], MI4: [36.5e6, 122e6], MI6: [69e6, 230e6], MI5: [49e6, 163e6], MI7: [96e6, 320e6]
+};
+
+/* khoá anh em: cùng giá cũ, cùng số giờ (chị chốt "theo khoá anh em") */
+var PHI_ANH_EM = {
+  VP70_A2: "VP70", VP105_A2: "VP105",
+  NP70: "NPGVVN_70", NP105: "NPGVVN_70",
+  "OT70 (10)": "VP105", "OT70 (12)": "VP105", "OT105 (10)": "VP105", "OT105 (12)": "VP105",
+  K5: "I04", W5: "I04", S5: "I04", SW5: "I04", K6: "I04", W6: "I04", S6: "I04", SW6: "I04"
+  /* I47: không có anh em → giữ giá cũ */
+};
+
+/* 4 khoá mới — số giờ lấy đúng theo tên khoá trong bảng của chị */
+var KHOA_2026_MOI = [
+  { sau: "MI42", c: { nhom: "IELTS", code: "MI4", name: "Khoá IELTS cho người mới bắt đầu cam kết 4.0 IELTS", gio: 130, gvvn: 100, gvnn: 30, gs: 30, tainghe: 1, dr: "4.0 IELTS", hd: "CK", ct: "IELTS" } },
+  { sau: "VP70_A2", c: { nhom: "Giao tiếp", code: "VP70_VK", name: "Khoá giao tiếp online VK 1-1 (GVVN 40h - GVNN 30h)", gio: 70, gvvn: 40, gvnn: 30, gs: 0, tainghe: 1, dr: "", hd: "GT", ct: "GT" } },
+  { truoc: "NP70", c: { nhom: "Ngữ pháp", code: "NPGVVN_70", name: "Khóa học ngữ pháp 70 giờ với giáo viên Việt Nam", gio: 70, gvvn: 70, gvnn: 0, gs: 0, tainghe: 1, dr: "", hd: "NP", ct: "GT" } },
+  { truoc: "VPK1H_M96", c: { nhom: "Kids", code: "VPK1H_S96", name: "Khóa học Kids Starters 96 giờ (40h GVVN - 56h GVNN)", gio: 96, gvvn: 40, gvnn: 56, gs: 48, tainghe: 1, dr: "Starters", hd: "KID", ct: "KIDS" } }
+];
+
+var V181 = { soKhoa: 0, khoaMoi: [], giuGiaCu: [], loi: "" };
+
+(function () {
+  try {
+    /* 1. thêm 4 khoá mới, đặt liền nhóm để ô chọn không tách nhóm */
+    KHOA_2026_MOI.forEach(x => {
+      if (COURSES.some(c => c.code === x.c.code)) return;
+      const c = Object.assign({}, x.c, { chiMoi: 1 });
+      let i = COURSES.findIndex(cc => cc.code === (x.sau || x.truoc));
+      if (i < 0) i = COURSES.length; else if (x.sau) i++;
+      COURSES.splice(i, 0, c);
+      V181.khoaMoi.push(c.code);
+    });
+    /* 2. giữ giá cũ, gắn giá mới */
+    COURSES.forEach(c => {
+      if (c.gocCu === undefined && !c.chiMoi) { c.gocCu = c.goc; c.uudaiCu = c.uudai; }
+      const p = PHI_2026[c.code] || PHI_2026[PHI_ANH_EM[c.code]];
+      if (p) { c.uudai = p[0]; c.goc = p[1]; V181.soKhoa++; }
+      else V181.giuGiaCu.push(c.code);
+    });
+  } catch (e) { V181.loi = "nạp bảng phí: " + (e.message || e); }
+})();
+
+/* giá của một khoá theo bảng */
+function phiTheoBang(C, bang) {
+  if (!C) return { goc: 0, uudai: 0 };
+  if (bang === "cu" && C.gocCu !== undefined) return { goc: C.gocCu, uudai: C.uudaiCu };
+  return { goc: C.goc, uudai: C.uudai };
+}
+
+/* đơn này đang theo bảng nào — đơn cũ chưa ghi thì suy từ giá đang lưu */
+function bangCuaDon(O) {
+  if (!O) return "moi";
+  if (O.bangPhi === "cu" || O.bangPhi === "moi") return O.bangPhi;
+  const C = courseOf(O.code);
+  if (C && C.gocCu !== undefined && (O.giaGoc === C.gocCu || O.uuDai === C.uudaiCu)) return "cu";
+  return "moi";
+}
+
+/* chọn khoá / đổi bảng → điền lại giá gốc và học phí sau giảm theo đúng bảng */
+(function () {
+  if (typeof ganGiaTheoKhoa !== "function") return;
+  ganGiaTheoKhoa = function (O) {
+    const C = courseOf(O.code); if (!C) return;
+    let bang = bangCuaDon(O);
+    if (bang === "cu" && C.gocCu === undefined) bang = "moi";   /* khoá mới chỉ có giá mới */
+    O.bangPhi = bang;
+    const p = phiTheoBang(C, bang);
+    O.giaGoc = p.goc;
+    O.uuDai = p.uudai;
+    O.doanhThu = p.uudai;
+    O.chietKhau = Math.max(0, O.giaGoc - O.doanhThu);
+    O.lechGia = false;
+    O.soBuoiGS = C.gs || 0;
+  };
+})();
+
+/* ô "Gói học đăng ký": chọn bảng học phí + chọn khoá theo giá của bảng đó */
+function v181OKhoa(k, O, f, xong) {
+  const wrap = el("div");
+  wrap.className = "v181-khoa";
+  const hang = el("div");
+  hang.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px";
+  const bangNay = bangCuaDon(O);
+  ["moi", "cu"].forEach(b => {
+    const n = el("button", "btn sm" + (b === bangNay ? " pri" : ""), BANG_PHI_TEN[b]);
+    n.type = "button";
+    n.dataset.bang = b;
+    n.onclick = () => {
+      if (b === bangCuaDon(O)) return;
+      O.bangPhi = b;
+      if (O.code) {
+        const C = courseOf(O.code);
+        if (b === "cu" && C && C.gocCu === undefined) {
+          toast(O.code + " là khoá mới, chỉ có " + BANG_PHI_TEN.moi);
+          O.bangPhi = "moi";
+        } else ganGiaTheoKhoa(O);
+      }
+      xong(wrap);
+    };
+    hang.appendChild(n);
+  });
+  wrap.appendChild(hang);
+
+  const s = el("select"); s.style.width = "100%";
+  s.appendChild(new Option("— Chọn mã khoá học —", ""));
+  let nc = null, og = null;
+  COURSES.forEach(c => {
+    if (bangNay === "cu" && c.gocCu === undefined) return;      /* khoá mới không có giá cũ */
+    if (c.nhom !== nc) { nc = c.nhom; og = document.createElement("optgroup"); og.label = c.nhom; s.appendChild(og); }
+    const p = phiTheoBang(c, bangNay);
+    og.appendChild(new Option(c.code + " — " + c.name + " · " + tienVN(p.uudai) + "₫ (gốc " + tienVN(p.goc) + "₫)", c.code));
+  });
+  s.value = f.g(k, O) || "";
+  s.onchange = () => { O.bangPhi = bangCuaDon(O); f.s(k, O, s.value); xong(wrap); };
+  wrap.appendChild(s);
+
+  if (O.code && courseOf(O.code)) {
+    const g = el("div", "nb-hint");
+    g.style.marginTop = "4px";
+    g.innerHTML = "Theo <b>" + esc(BANG_PHI_TEN[bangNay]) + "</b>: học phí gốc <b class='tnum'>" + tienVN(O.giaGoc)
+      + "₫</b> · sau ưu đãi <b class='tnum'>" + tienVN(O.doanhThu) + "₫</b>";
+    wrap.appendChild(g);
+  }
+  return wrap;
+}
+
+/* ô "Mức học phí sau giảm" đang hiện trên màn thì sửa theo cho khớp, khỏi phải vẽ lại cả phiếu */
+function v181DongBoOTien(tu, O) {
+  try {
+    const r0 = tu.closest(".nb-f"), hop = (r0 && r0.parentNode) || document;
+    hop.querySelectorAll(".nb-f").forEach(r => {
+      if (!/Mức học phí sau giảm/.test((r.querySelector(".nb-l") || {}).textContent || "")) return;
+      const i = r.querySelector("input"); if (i) i.value = tienVN(O.doanhThu);
+    });
+  } catch (e) { }
+}
+
+/* bảng trượt bên phải (màn chị dùng) */
+(function () {
+  if (typeof oDK2Base !== "function") return;
+  const goc = oDK2Base;
+  oDK2Base = function (k, O, f, lab, luuNhe) {
+    if (f && f.t === "khoa") {
+      const ve = w => {
+        luuNhe(1);
+        const moi = v181OKhoa(k, O, f, ve);
+        if (w && w.parentNode) w.parentNode.replaceChild(moi, w);
+        v181DongBoOTien(moi, O);
+      };
+      return v181OKhoa(k, O, f, ve);
+    }
+    return goc.apply(this, arguments);
+  };
+})();
+
+/* cửa sổ hồ sơ lớn */
+(function () {
+  if (typeof oDK !== "function") return;
+  const goc = oDK;
+  oDK = function (k, O, f, ve) {
+    if (f && f.t === "khoa") return v181OKhoa(k, O, f, () => { persist(); ve(); });
+    return goc.apply(this, arguments);
   };
 })();
 </script></body></html>
